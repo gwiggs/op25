@@ -32,14 +32,24 @@ from gnuradio import gr
 from math import pi
 
 _def_debug = 0
-_def_sps = 10
+_def_sps = 5
+_def_sps_mult = 2
 
 GNUPLOT = '/usr/bin/gnuplot'
 
+<<<<<<< HEAD
 FFT_AVG  = 0.25
 MIX_AVG  = 0.15
 BAL_AVG  = 0.05
 FFT_BINS = 512
+=======
+FFT_AVG  = 0.05
+MIX_AVG  = 0.10
+BAL_AVG  = 0.05
+FFT_BINS = 512    # number of fft bins
+FFT_FREQ = 0.05   # time interval between fft updates
+MIX_FREQ = 0.02   # time interval between mixer updates
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 def degrees(r):
 	d = 360 * r / (2*pi)
@@ -55,7 +65,11 @@ def limit(a,lim):
 	return a
 
 class wrap_gp(object):
+<<<<<<< HEAD
 	def __init__(self, sps=_def_sps, logfile=None):
+=======
+	def __init__(self, sps=_def_sps, plot_name=""):
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 		self.sps = sps
 		self.center_freq = 0.0
 		self.relative_freq = 0.0
@@ -72,7 +86,14 @@ class wrap_gp(object):
 		self.sequence = 0
 		self.output_dir = None
 		self.filename = None
+<<<<<<< HEAD
 		self.logfile = logfile
+=======
+                if plot_name == "":
+                        self.plot_name = ""
+                else:
+			self.plot_name = plot_name + " "
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 		self.attach_gp()
 
@@ -80,6 +101,9 @@ class wrap_gp(object):
 		args = (GNUPLOT, '-noraise')
 		exe  = GNUPLOT
 		self.gp = subprocess.Popen(args, executable=exe, stdin=subprocess.PIPE)
+
+        def set_sps(self, sps):
+            self.sps = sps
 
 	def kill(self):
 		try:
@@ -92,6 +116,7 @@ class wrap_gp(object):
 			if self.gp.returncode is not None:
 				break
 			time.sleep(0.1)
+<<<<<<< HEAD
 			if self.gp.returncode is not None:
 				break
 			sleep_count += 1
@@ -99,6 +124,11 @@ class wrap_gp(object):
 				self.gp.kill()
 			if sleep_count >= 3:
 				break
+=======
+			sleep_count += 1
+			if (sleep_count % 5) == 0:
+				self.gp.kill()
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 	def set_interval(self, v):
 		self.plot_interval = v
@@ -111,7 +141,6 @@ class wrap_gp(object):
 		consumed = min(len(buf), BUFSZ-len(self.buf))
 		if len(self.buf) < BUFSZ:
 			self.buf.extend(buf[:consumed])
-		if len(self.buf) < BUFSZ:
 			return consumed
 
 		self.plot_count += 1
@@ -152,7 +181,11 @@ class wrap_gp(object):
 				plots.append('"-" with points')
 			elif mode == 'fft' or mode == 'mixer':
 				sum_pwr = 0.0
+<<<<<<< HEAD
 				self.ffts = np.fft.fft(self.buf * np.blackman(BUFSZ)) / (0.42 * BUFSZ)
+=======
+				self.ffts = np.fft.fft((self.buf * np.blackman(BUFSZ)), BUFSZ , 0) / (0.42 * BUFSZ)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 				self.ffts = np.fft.fftshift(self.ffts)
 				self.freqs = np.fft.fftfreq(len(self.ffts))
 				self.freqs = np.fft.fftshift(self.freqs)
@@ -171,12 +204,15 @@ class wrap_gp(object):
 						elif (self.freqs[i] - self.center_freq) > 0:
 							sum_pwr += self.avg_pwr[i]
 						self.avg_sum_pwr = ((1.0 - BAL_AVG) * self.avg_sum_pwr) + (BAL_AVG * sum_pwr)
+<<<<<<< HEAD
 				s += 'e\n'
 				self.buf = []
 				plots.append('"-" with lines')
 			elif mode == 'float':
 				for b in self.buf:
 					s += '%f\n' % (b)
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 				s += 'e\n'
 				self.buf = []
 				plots.append('"-" with lines')
@@ -207,6 +243,7 @@ class wrap_gp(object):
 			h+= 'set size square\n'
 			h+= 'set xrange [-1:1]\n'
 			h+= 'set yrange [-1:1]\n'
+<<<<<<< HEAD
 			h += 'unset border\n'
 			h += 'set polar\n'
 			h += 'set angles degrees\n'
@@ -232,6 +269,17 @@ class wrap_gp(object):
 			h+= background
 			h+= 'set yrange [-4:4]\n'
                         h+= 'set title "Symbol"\n'
+=======
+                        h+= 'set title "%sConstellation"\n' % self.plot_name
+		elif mode == 'eye':
+			h+= background
+			h+= 'set yrange [-4:4]\n'
+                        h+= 'set title "%sDatascope"\n' % self.plot_name
+		elif mode == 'symbol':
+			h+= background
+			h+= 'set yrange [-4:4]\n'
+                        h+= 'set title "%sSymbol"\n' % self.plot_name
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 		elif mode == 'fft' or mode == 'mixer':
 			h+= 'unset arrow; unset title\n'
 			h+= 'set xrange [%f:%f]\n' % (self.freqs[0], self.freqs[len(self.freqs)-1])
@@ -240,6 +288,7 @@ class wrap_gp(object):
                         h+= 'set grid\n'
 			h+= 'set yrange [-100:0]\n'
 			if mode == 'mixer':	# mixer
+<<<<<<< HEAD
                                 h+= 'set title "Mixer: balance %3.0f (smaller is better)"\n' % (np.abs(self.avg_sum_pwr * 1000))
 			else:			# fft
                                 h+= 'set title "Spectrum"\n'
@@ -254,6 +303,16 @@ class wrap_gp(object):
                 if self.logfile is not None:
                     with open(self.logfile, 'a') as fd:
                         fd.write(dat)
+=======
+                                h+= 'set title "%sMixer: balance %3.0f (smaller is better)"\n' % (self.plot_name, (np.abs(self.avg_sum_pwr * 1000)))
+			else:			# fft
+                                h+= 'set title "%sSpectrum"\n' % self.plot_name
+				if self.center_freq:
+					arrow_pos = (self.center_freq - self.relative_freq) / 1e6
+					h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
+					h+= 'set title "%sSpectrum: tuned to %f Mhz"\n' % (self.plot_name, arrow_pos)
+		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 		self.gp.poll()
 		if self.gp.returncode is None:	# make sure gnuplot is still running 
 			try:
@@ -282,14 +341,18 @@ class wrap_gp(object):
 class eye_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, sps = _def_sps):
+    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = ""):
         gr.sync_block.__init__(self,
             name="eye_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.sps = sps
-        self.gnuplot = wrap_gp(sps=self.sps)
+        self.sps = sps * _def_sps_mult
+        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name)
+
+    def set_sps(self, sps):
+        self.sps = sps * _def_sps_mult
+        self.gnuplot.set_sps(self.sps)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -302,13 +365,13 @@ class eye_sink_f(gr.sync_block):
 class constellation_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug):
+    def __init__(self, debug = _def_debug, plot_name = ""):
         gr.sync_block.__init__(self,
             name="constellation_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp()
+        self.gnuplot = wrap_gp(plot_name=plot_name)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -321,19 +384,24 @@ class constellation_sink_c(gr.sync_block):
 class fft_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug):
+    def __init__(self, debug = _def_debug, plot_name = ""):
         gr.sync_block.__init__(self,
             name="fft_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp()
-        self.skip = 0
+        self.gnuplot = wrap_gp(plot_name=plot_name)
+        self.next_due = time.time()
 
     def work(self, input_items, output_items):
+<<<<<<< HEAD
         self.skip += 1
         if self.skip >= 50:
             self.skip = 0
+=======
+        if time.time() > self.next_due:
+            self.next_due = time.time() + FFT_FREQ
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             in0 = input_items[0]
 	    self.gnuplot.plot(in0, FFT_BINS, mode='fft')
         return len(input_items[0])
@@ -357,12 +425,17 @@ class fft_sink_c(gr.sync_block):
 class mixer_sink_c(gr.sync_block):
     """
     """
+<<<<<<< HEAD
     def __init__(self, debug = _def_debug):
+=======
+    def __init__(self, debug = _def_debug, plot_name = ""):
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         gr.sync_block.__init__(self,
             name="mixer_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
+<<<<<<< HEAD
         self.gnuplot = wrap_gp()
         self.skip = 0
 
@@ -372,6 +445,16 @@ class mixer_sink_c(gr.sync_block):
             self.skip = 0
             in0 = input_items[0]
             self.gnuplot.plot(in0, FFT_BINS, mode='mixer')
+=======
+        self.gnuplot = wrap_gp(plot_name=plot_name)
+        self.next_due = time.time()
+
+    def work(self, input_items, output_items):
+        if time.time() > self.next_due:
+            self.next_due = time.time() + MIX_FREQ
+            in0 = input_items[0]
+	    self.gnuplot.plot(in0, FFT_BINS, mode='mixer')
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         return len(input_items[0])
 
     def kill(self):
@@ -380,13 +463,13 @@ class mixer_sink_c(gr.sync_block):
 class symbol_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug):
+    def __init__(self, debug = _def_debug, plot_name = ""):
         gr.sync_block.__init__(self,
             name="symbol_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp()
+        self.gnuplot = wrap_gp(plot_name=plot_name)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]

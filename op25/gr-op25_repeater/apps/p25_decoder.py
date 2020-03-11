@@ -43,6 +43,7 @@ _def_dest = 'wav'
 _def_audio_rate = 8000
 _def_audio_output = 'plughw:0,0'
 _def_max_tdma_timeslots = 2
+_def_nocrypt = False
 
 # /////////////////////////////////////////////////////////////////////////////
 #                           decoder
@@ -59,7 +60,8 @@ class p25_decoder_sink_b(gr.hier_block2):
                  do_msgq	= False,
                  msgq		= None,
                  audio_output	= _def_audio_output,
-                 debug		= _def_debug):
+                 debug		= _def_debug,
+                 nocrypt        = _def_nocrypt ):
         """
 	Hierarchical block for P25 decoding.
 
@@ -79,6 +81,10 @@ class p25_decoder_sink_b(gr.hier_block2):
         do_output = False
         do_audio_output = False
         do_phase2_tdma = False
+<<<<<<< HEAD
+=======
+        do_nocrypt = nocrypt
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if dest == 'wav':
             do_output = True
 
@@ -100,7 +106,11 @@ class p25_decoder_sink_b(gr.hier_block2):
         if num_ambe > 1:
            num_decoders += num_ambe - 1
         for slot in xrange(num_decoders):
+<<<<<<< HEAD
             self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, do_phase2_tdma))
+=======
+            self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, do_phase2_tdma, do_nocrypt))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             self.p25_decoders[slot].set_slotid(slot)
 
             self.xorhash.append('')
@@ -125,6 +135,9 @@ class p25_decoder_sink_b(gr.hier_block2):
     def set_slotid(self, slot, index=0):
         self.p25_decoders[index].set_slotid(slot)
 
+    def set_slotkey(self, key, index=0):
+        self.p25_decoders[index].set_slotkey(key)
+
     def set_output(self, filename, index=0):
         if self.dest != 'wav':
             return
@@ -141,3 +154,6 @@ class p25_decoder_sink_b(gr.hier_block2):
 
     def set_scaler_k(self, k, index=0):
         self.scaler[index].set_k(k)
+
+    def reset_timer(self, index=0):
+        self.p25_decoders[index].reset_timer()

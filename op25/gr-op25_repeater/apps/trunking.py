@@ -21,12 +21,16 @@
 #
 
 import sys
+import ctypes
 import time
 import collections
 import json
 sys.path.append('tdma')
 import lfsr
 from tsvfile import make_config, load_tsv
+
+def utf_ascii(ustr):
+    return (ustr.decode("utf-8")).encode("ascii", "ignore")
 
 def crc16(dat,len):	# slow version
     poly = (1<<12) + (1<<5) + (1<<0)
@@ -42,8 +46,9 @@ def crc16(dat,len):	# slow version
     return crc
 
 class trunked_system (object):
-    def __init__(self, debug=0, config=None):
+    def __init__(self, debug=0, config=None, wildcard=False):
         self.debug = debug
+        self.wildcard_tsys = wildcard
         self.freq_table = {}
         self.stats = {}
         self.stats['tsbks'] = 0
@@ -72,11 +77,12 @@ class trunked_system (object):
         self.cc_list = []
         self.cc_list_index = 0
         self.CC_HUNT_TIME = 5.0
+        self.PATCH_EXPIRY_TIME = 20.0
         self.center_frequency = 0
         self.last_tsbk = 0
         self.cc_timeouts = 0
-
         self.talkgroups = {}
+        self.patches ={}
         if config:
             self.blacklist = config['blacklist']
             self.whitelist = config['whitelist']
@@ -88,11 +94,35 @@ class trunked_system (object):
             self.center_frequency = config['center_frequency']
             self.modulation = config['modulation']
 
+<<<<<<< HEAD
         self.current_srcaddr = 0
         self.current_grpaddr = 0	# from P25 LCW
         self.current_alg = ""
         self.current_algid = 128
         self.current_keyid = 0
+=======
+    def reset(self):
+        self.freq_table = {}
+        self.stats = {}
+        self.stats['tsbks'] = 0
+        self.stats['crc'] = 0
+        self.tsbk_cache = {}
+        self.secondary = {}
+        self.adjacent = {}
+        self.adjacent_data = {}
+        self.rfss_syid = 0
+        self.rfss_rfid = 0
+        self.rfss_stid = 0
+        self.rfss_chan = 0
+        self.rfss_txchan = 0
+        self.ns_syid = -1
+        self.ns_wacn = -1
+        self.ns_chan = 0
+        self.voice_frequencies = {}
+        self.last_tsbk = 0
+        self.cc_timeouts = 0
+        self.talkgroups = {}
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
     def to_json(self):
         d = {}
@@ -152,7 +182,9 @@ class trunked_system (object):
             return None
         if 'tdma' not in self.freq_table[table]:
             return None
-        return channel & 1
+        if self.freq_table[table]['tdma'] < 2:
+            return None
+        return channel & 1 # TODO: this isn't going to work with more than 2 slots per channel!
 
 # return frequency in Hz
     def channel_id_to_frequency(self, id):
@@ -182,10 +214,25 @@ class trunked_system (object):
             return 3
         return self.tgid_map[tgid][1]
 
+<<<<<<< HEAD
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
         if self.debug >= 5:
             sys.stderr.write('%f set tgid=%s, srcaddr=%s\n' % (time.time(), tgid, srcaddr))
 
+=======
+    def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr):
+        self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr)
+        if tgid in self.patches:
+            for ptgid in self.patches[tgid]['ga']:
+                self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr)
+                if self.debug >= 5:
+                    sys.stderr.write('%f update_talkgroups: sg(%d) patched tgid(%d)\n' % (time.time(), tgid, ptgid))
+
+    def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
+        if self.debug >= 5:
+            sys.stderr.write('%f set tgid=%s, srcaddr=%s\n' % (time.time(), tgid, srcaddr))
+        
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if tgid not in self.talkgroups:
             self.talkgroups[tgid] = {'counter':0}
             if self.debug >= 5:
@@ -199,7 +246,11 @@ class trunked_system (object):
     def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0):
         if not frequency:	# e.g., channel identifier not yet known
             return
+<<<<<<< HEAD
         self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr)
+=======
+        self.update_talkgroups(frequency, tgid, tdma_slot, srcaddr)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
@@ -218,8 +269,8 @@ class trunked_system (object):
     def get_updated_talkgroups(self, start_time):
         return [tgid for tgid in self.talkgroups if (
                        self.talkgroups[tgid]['time'] >= start_time and
-                       tgid not in self.blacklist and
-                       not (self.whitelist and tgid not in self.whitelist))]
+                       ((self.whitelist and tgid in self.whitelist) or
+                       (not self.whitelist and tgid not in self.blacklist)))]
 
     def blacklist_update(self, start_time):
         expired_tgs = [tg for tg in self.blacklist.keys()
@@ -228,6 +279,49 @@ class trunked_system (object):
         for tg in expired_tgs:
             self.blacklist.pop(tg)
 
+<<<<<<< HEAD
+=======
+    def add_patch(self, sg, ga1, ga2, ga3):
+        if sg not in self.patches:
+            self.patches[sg] = {}
+            self.patches[sg]['ga'] = set()
+            self.patches[sg]['ts'] = time.time()
+
+        for ga in [ga1, ga2, ga3]:
+            if (ga != sg):
+                self.patches[sg]['ts'] = time.time() # update timestamp
+                if ga not in self.patches[sg]['ga']:
+                    self.patches[sg]['ga'].add(ga)
+                    if self.debug >= 5:
+                        sys.stderr.write("%f add_patch: tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
+
+        if len(self.patches[sg]['ga']) == 0:
+            del self.patches[sg]
+
+    def del_patch(self, sg, ga1, ga2, ga3):
+        if sg not in self.patches:
+            return
+
+        for ga in [ga1, ga2, ga3]:
+            if ga in self.patches[sg]['ga']:
+                self.patches[sg]['ga'].discard(ga)
+                if self.debug >= 5:
+                    sys.stderr.write("%f del_patch: tgid(%d) is unpatched from sg(%d)\n" % (time.time(), ga, sg))
+
+        if ((ga1, ga2, ga3) == (0, 0, 0)) or (len(self.patches[sg]['ga']) == 0):
+            del self.patches[sg]
+            if self.debug >= 5:
+                sys.stderr.write("%f del_patch: deleting patch sg(%d)\n" % (time.time(), sg))
+
+    def expire_patches(self):
+        time_now = time.time()
+        for sg in list(self.patches):
+            if time_now > (self.patches[sg]['ts'] + self.PATCH_EXPIRY_TIME):
+                del self.patches[sg]
+                if self.debug >= 5:
+                    sys.stderr.write("%f expired_patches: expiring patch sg(%d)\n" % (time.time(), sg))
+
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
         self.blacklist_update(start_time)
@@ -240,7 +334,7 @@ class trunked_system (object):
                 break
             if self.talkgroups[active_tgid]['time'] < start_time:
                 continue
-            if active_tgid in self.blacklist:
+            if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
                 continue
             if self.whitelist and active_tgid not in self.whitelist:
                 continue
@@ -256,7 +350,11 @@ class trunked_system (object):
         return None, None, None, None
 
     def dump_tgids(self):
+<<<<<<< HEAD
         sys.stderr.write("Known tgids: { ")
+=======
+	sys.stderr.write("Known tgids: { ")
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write("%d " % tgid);
         sys.stderr.write("}\n") 
@@ -264,7 +362,28 @@ class trunked_system (object):
     def add_blacklist(self, tgid, end_time=None):
         if not tgid:
             return
+        if tgid in self.blacklist:
+            return
+        if self.whitelist and tgid in self.whitelist:
+            self.whitelist.pop(tgid)
+            if self.debug > 0:
+                sys.stderr.write("%f de-whitelisting tgid(%d)\n" % (time.time(), tgid))
         self.blacklist[tgid] = end_time
+        if self.debug > 0:
+            sys.stderr.write("%f blacklisting tgid(%d)\n" % (time.time(), tgid))
+
+    def add_whitelist(self, tgid):
+        if not tgid:
+            return
+        if self.blacklist and tgid in self.blacklist:
+            self.blacklist.pop(tgid)
+            if self.debug > 0:
+                sys.stderr.write("%f de-blacklisting tgid(%d)\n" % (time.time(), tgid))
+        if not self.whitelist or tgid in self.whitelist:
+            return
+        self.whitelist[tgid] = None
+        if self.debug > 0:
+            sys.stderr.write("%f whitelisting tgid(%d)\n" % (time.time(), tgid))
 
     def decode_mbt_data(self, opcode, src, header, mbt_data):
         self.cc_timeouts = 0
@@ -282,6 +401,21 @@ class trunked_system (object):
                 updated += 1
             if self.debug > 10:
                 sys.stderr.write('mbt00 voice grant ch1 %x ch2 %x addr 0x%x\n' %(ch1, ch2, ga))
+<<<<<<< HEAD
+=======
+        if opcode == 0x02: # grp regroup voice channel grant
+            mfrid  = (mbt_data >> 168) & 0xff
+            if mfrid == 0x90:	# MOT_GRG_CN_GRANT_EXP
+                ch1  = (mbt_data >> 80) & 0xffff
+                ch2  = (mbt_data >> 64) & 0xffff
+                sg   = (mbt_data >> 48) & 0xffff
+                f = self.channel_id_to_frequency(ch1)
+                self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch1), srcaddr=src)
+                if f:
+                    updated += 1
+                if self.debug > 10:
+                    sys.stderr.write('mbt02 voice regroup grant ch1 %x ch2 %x addr 0x%x\n' %(ch1, ch2, ga))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         elif opcode == 0x3c:  # adjacent status
             syid = (header >> 48) & 0xfff
             rfid = (header >> 24) & 0xff
@@ -324,8 +458,13 @@ class trunked_system (object):
                 self.rfss_txchan = f2
             if self.debug > 10:
                 sys.stderr.write('mbt3a rfss stat sys %x rfid %x stid %x ch1 %s ch2 %s\n' %(syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+<<<<<<< HEAD
         else:
             sys.stderr.write('decode_mbt_data(): received unsupported mbt opcode %x\n' % opcode)
+=======
+        #else:
+        #    sys.stderr.write('mbt other %x\n' % opcode
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         return updated
 
     def decode_tsbk(self, tsbk):
@@ -340,14 +479,18 @@ class trunked_system (object):
         if opcode == 0x00:   # group voice chan grant
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90:	# MOT_GRG_ADD_CMD
-                sg  = (tsbk >> 64) & 0xffff
-                ga1   = (tsbk >> 48) & 0xffff
-                ga2   = (tsbk >> 32) & 0xffff
-                ga3   = (tsbk >> 16) & 0xffff
+                sg   = (tsbk >> 64) & 0xffff
+                ga1  = (tsbk >> 48) & 0xffff
+                ga2  = (tsbk >> 32) & 0xffff
+                ga3  = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('MOT_GRG_ADD_CMD(0x00): sg:%d ga1:%d ga2:%d ga3:%d\n' % (sg, ga1, ga2, ga3))
+<<<<<<< HEAD
+=======
+                self.add_patch(sg, ga1, ga2, ga3)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             else:
-                opts  = (tsbk >> 72) & 0xff
+                opts = (tsbk >> 72) & 0xff
                 ch   = (tsbk >> 56) & 0xffff
                 ga   = (tsbk >> 40) & 0xffff
                 sa   = (tsbk >> 16) & 0xffffff
@@ -360,12 +503,16 @@ class trunked_system (object):
         elif opcode == 0x01:   # reserved
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: #MOT_GRG_DEL_CMD
-                sg  = (tsbk >> 64) & 0xffff
-                ga1   = (tsbk >> 48) & 0xffff
-                ga2   = (tsbk >> 32) & 0xffff
-                ga3   = (tsbk >> 16) & 0xffff
+                sg   = (tsbk >> 64) & 0xffff
+                ga1  = (tsbk >> 48) & 0xffff
+                ga2  = (tsbk >> 32) & 0xffff
+                ga3  = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('MOT_GRG_DEL_CMD(0x01): sg:%d ga1:%d ga2:%d ga3:%d\n' % (sg, ga1, ga2, ga3))
+<<<<<<< HEAD
+=======
+                self.del_patch(sg, ga1, ga2, ga3)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         elif opcode == 0x02:   # group voice chan grant update
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90:
@@ -397,9 +544,9 @@ class trunked_system (object):
         elif opcode == 0x03:   # group voice chan grant update exp : TIA.102-AABC-B-2005 page 56
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: #MOT_GRG_CN_GRANT_UPDT
-                ch1   = (tsbk >> 64) & 0xffff
+                ch1  = (tsbk >> 64) & 0xffff
                 sg1  = (tsbk >> 48) & 0xffff
-                ch2   = (tsbk >> 32) & 0xffff
+                ch2  = (tsbk >> 32) & 0xffff
                 sg2  = (tsbk >> 16) & 0xffff
                 f1 = self.channel_id_to_frequency(ch1)
                 f2 = self.channel_id_to_frequency(ch2)
@@ -437,6 +584,30 @@ class trunked_system (object):
             ta     = (tsbk >> 16) & 0xffffff
             if self.debug > 10:
                 sys.stderr.write('tsbk28 grp_aff_resp: mfrid: 0x%x, gav: %d, aga: %d, ga: %d, ta: %d\n' % (mfrid, gav, aga, ga, ta))
+<<<<<<< HEAD
+=======
+        elif opcode == 0x30:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0xA4:  # GRG_EXENC_CMD
+                grg_t   = (tsbk >> 79) & 0x1
+                grg_g   = (tsbk >> 78) & 0x1
+                grg_a   = (tsbk >> 77) & 0x1
+                grg_ssn = (tsbk >> 72) & 0x1f # TODO: SSN should be stored and checked
+                sg      = (tsbk >> 56) & 0xffff
+                keyid   = (tsbk >> 40) & 0xffff
+                rta     = (tsbk >> 16) & 0xffffff
+                if self.debug > 10:
+                    sys.stderr.write('GRG_EXENC_CMD(0x30): grg_t:%d, grg_g:%d, grg_a:%d, grg_ssn:%d, sg:%d, keyid:%d, rta:%d\n' % (grg_t, grg_g, grg_a, grg_ssn, sg, keyid, rta))
+                if grg_a == 1: # Activate
+                    if grg_g == 1: # Group request
+                        algid = (rta >> 16) & 0xff
+                        ga    =  rta        & 0xffff
+                        self.add_patch(sg, ga, ga, ga)
+                    else:          # Unit request (currently unhandled)
+                        pass
+                else:          # Deactivate
+                    self.del_patch(sg, 0, 0, 0)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
@@ -466,7 +637,7 @@ class trunked_system (object):
                 if toff_sign == 0:
                     toff = 0 - toff
                 f1   = (tsbk >> 16) & 0xffffffff
-                slots_per_carrier = [1,1,1,2,4,2]
+                slots_per_carrier = [1,1,1,2,4,2,2,2,2,2,2,2,2,2,2,2] # values above 5 are reserved and not valid
                 self.freq_table[iden] = {}
                 self.freq_table[iden]['offset'] = toff * spac * 125
                 self.freq_table[iden]['step'] = spac * 125
@@ -557,16 +728,52 @@ class trunked_system (object):
         if self.cc_list_index >= len(self.cc_list):
             self.cc_list_index = 0
         self.trunk_cc = self.cc_list[self.cc_list_index]
+<<<<<<< HEAD
         sys.stderr.write('%f set trunk_cc to %s\n' % (curr_time, self.trunk_cc))
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if self.trunk_cc != self.last_trunk_cc:
             self.last_trunk_cc = self.trunk_cc
             if self.debug >=5:
                 sys.stderr.write('%f set control channel: %f\n' % (curr_time, self.trunk_cc / 1000000.0))
             return True
         return False
+<<<<<<< HEAD
+=======
+
+def get_int_dict(s):
+    # test below looks like it was meant to read a csv list from the config
+    # file directly, rather than from a separate file.  Not sure if this is
+    # actually used anymore, and could break if whitelist/blacklist file
+    # path begins with a digit.
+
+    if s[0].isdigit():
+        return dict.fromkeys([int(d) for d in s.split(',')])
+
+    # create dict by reading from file
+    d = {}                     # this is the dict
+    with open(s,"r") as f:
+        for v in f:
+            v = v.split("\t",1) # split on tab
+            try:
+                v0 = int(v[0])				# first parameter is tgid or start of tgid range
+		v1 = v0
+		if (len(v) > 1) and (int(v[1]) > v0):	# second parameter if present is end of tgid range
+                	v1 = int(v[1])
+		
+		for tg in range(v0, (v1 + 1)):
+                	if tg not in d:      # is this a new tg?
+                		d[tg] = []   # if so, add to dict (key only, value null)
+                		sys.stderr.write('added talkgroup %d from %s\n' % (tg,s))
+
+            except (IndexError, ValueError) as ex:
+                continue
+    f.close()
+    return dict.fromkeys(d)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None):
         class _states(object):
             ACQ = 0
             CC = 1
@@ -577,6 +784,8 @@ class rx_ctl (object):
         self.current_state = self.states.CC
         self.trunked_systems = {}
         self.frequency_set = frequency_set
+        self.meta_update = meta_update
+        self.meta_state = 0
         self.debug = debug
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
@@ -586,6 +795,9 @@ class rx_ctl (object):
         self.current_nac = None
         self.current_id = 0
         self.current_tgid = None
+        self.current_srcaddr = 0
+        self.current_grpaddr = 0	# from P25 LCW
+        self.current_encrypted = 0
         self.current_slot = None
         self.TSYS_HOLD_TIME = 3.0	# TODO: make more configurable
         self.wait_until = time.time()
@@ -596,7 +808,12 @@ class rx_ctl (object):
         self.working_frequencies = {}
         self.xor_cache = {}
         self.last_garbage_collect = 0
+<<<<<<< HEAD
         self.last_command = {'command': None, 'time': time.time()}
+=======
+        self.last_tune_time = 0.0;
+        self.last_tune_freq = 0;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if self.logfile_workers:
             self.input_rate = self.logfile_workers[0]['demod'].input_rate
         self.enabled_nacs = None
@@ -648,8 +865,14 @@ class rx_ctl (object):
     def set_frequency(self, params):
         frequency = params['freq']
         if frequency and self.frequency_set:
+            if self.debug > 10:
+                sys.stderr.write("%f set_frequency(%s)\n" % (time.time(), frequency))
+            if frequency != self.last_tune_freq:
+                self.last_tune_time = time.time()
+                self.last_tune_freq = frequency
             self.frequency_set(params)
 
+<<<<<<< HEAD
     def enable_status(self, s):
         if self.debug >= 10:
             sys.stderr.write('rx_ctl: enable_status: %s\n' % s)
@@ -660,16 +883,69 @@ class rx_ctl (object):
             sys.stderr.write('cannot disable all NACs - request ignored\n')
             return
         self.enabled_nacs = nacs
+=======
+    def do_metadata(self, state, tgid, tag):
+        if (state == 1) and (self.meta_state == 1): # don't update more than once for an idle channel (state=1)
+            return
+
+        if self.debug > 1:
+            sys.stderr.write("%f do_metadata state=%d: [%s] %s\n" % (time.time(), state, tgid, tag))
+        self.meta_update(tgid, tag)
+        self.meta_state = state
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
     def add_trunked_system(self, nac):
         assert nac not in self.trunked_systems	# duplicate nac not allowed
         cfg = None
+        nac0 = False
         if nac in self.configs:
             cfg = self.configs[nac]
-        self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg)
+        if nac == 0:
+            nac0 = True
+        self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg, wildcard=nac0)
 
     def build_config_tsv(self, tsv_filename):
+<<<<<<< HEAD
         self.setup_config(load_tsv(tsv_filename))
+=======
+        import csv
+        hdrmap = []
+        configs = {}
+        with open(tsv_filename, 'rb') as csvfile:
+            sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+            for row in sreader:
+                if row[0].startswith('#'):
+                    continue 
+                if not hdrmap:
+                    # process first line of tsv file - header line
+                    for hdr in row:
+                        hdr = hdr.replace(' ', '_')
+                        hdr = hdr.lower()
+                        hdrmap.append(hdr)
+                    continue
+                fields = {}
+                if (len(row) < 4) or (len(row) > 9):
+                    sys.stderr.write("Skipping invalid row in %s: %s\n" % (tsv_filename, row))
+                    continue
+                for i in xrange(len(row)):
+                    if row[i]:
+                        fields[hdrmap[i]] = row[i]
+                        if hdrmap[i] != 'sysname':
+                            fields[hdrmap[i]] = fields[hdrmap[i]].lower()
+                nac = int(fields['nac'], 0)
+                configs[nac] = fields
+
+        if 0 in configs: # if NAC 0 exists, remove all other configs
+            for nac in configs.keys():
+                if nac != 0:
+                    configs.pop(nac)
+
+        if len(configs) < 1:
+            sys.stderr.write("No valid trunking configs. Aborting!\n")
+            sys.exit(1)
+
+        self.setup_config(configs)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
     def build_config(self, config_filename):
         import ConfigParser
@@ -713,8 +989,47 @@ class rx_ctl (object):
             self.nacs.append(nac)
 
     def setup_config(self, configs):
+<<<<<<< HEAD
         self.configs = make_config(configs)
         for nac in self.configs.keys():
+=======
+        for nac in configs:
+            self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'sysname': configs[nac]['sysname'], 'center_frequency': None}
+            for f in configs[nac]['control_channel_list'].split(','):
+                self.configs[nac]['cclist'].append(get_frequency(f))
+            if 'offset' in configs[nac]:
+                self.configs[nac]['offset'] = int(configs[nac]['offset'])
+            if 'modulation' in configs[nac]:
+                self.configs[nac]['modulation'] = configs[nac]['modulation']
+            else:
+                self.configs[nac]['modulation'] = 'cqpsk'
+            for k in ['whitelist', 'blacklist']:
+                if k in configs[nac]:
+                    sys.stderr.write("Reading %s file\n" % k)
+                    self.configs[nac][k + ".file"] = configs[nac][k]
+                    self.configs[nac][k] = get_int_dict(configs[nac][k])
+            if 'tgid_tags_file' in configs[nac]:
+                import csv
+                with open(configs[nac]['tgid_tags_file'], 'rb') as csvfile:
+                    sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                    for row in sreader:
+                        try:
+                            tgid = int(row[0])
+                            txt = utf_ascii(row[1])
+                        except (IndexError, ValueError) as ex:
+                            continue
+                        if len(row) >= 3:
+                            try:
+                                prio = int(row[2])
+                            except ValueError as ex:
+                                prio = 3
+                        else:
+                            prio = 3
+                        self.configs[nac]['tgid_map'][tgid] = (txt, prio)
+            if 'center_frequency' in configs[nac]:
+                self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
+
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             self.add_trunked_system(nac)
 
     def find_next_tsys(self):
@@ -736,11 +1051,18 @@ class rx_ctl (object):
         d = {'json_type': 'trunk_update'}
         for nac in self.trunked_systems.keys():
             d[nac] = json.loads(self.trunked_systems[nac].to_json())
+<<<<<<< HEAD
         d['data'] = {'last_command': self.last_command['command'],
                      'last_command_time': int(self.last_command['time'] - current_time),
                      'tgid_hold': self.tgid_hold,
                      'tgid_hold_until': int(self.tgid_hold_until - current_time),
                      'hold_mode': self.hold_mode}
+=======
+        d['srcaddr'] = self.current_srcaddr
+        d['grpaddr'] = self.current_grpaddr
+        d['encrypted'] = self.current_encrypted
+        d['nac'] = self.current_nac
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         return json.dumps(d)
 
     def dump_tgids(self):
@@ -755,9 +1077,21 @@ class rx_ctl (object):
         return s
 
     def process_qmsg(self, msg):
-        type = msg.type()
+        m_proto = ctypes.c_int16(msg.type() >> 16).value
+        m_type = ctypes.c_int16(msg.type() & 0xffff).value
+        m_ts = float(msg.arg2())
+
+        if m_proto > 0:	# P25 m_proto=0
+            return
+
+        if (m_ts < self.last_tune_time) and (m_type != -2):
+            if self.debug > 10:
+                sys.stderr.write("type %d at %f with ts %f ignored due to frequency change\n" % (m_type, time.time(), m_ts))
+            return
+
         updated = 0
         curr_time = time.time()
+<<<<<<< HEAD
         if type == -3:		# P25 call signalling data
             if self.debug > 10:
                 sys.stderr.write("%f process_qmsg: P25 info: %s\n" % (time.time(), msg.to_string()))
@@ -784,41 +1118,92 @@ class rx_ctl (object):
             self.update_state(cmd, curr_time)
             return
         elif type == -1:	# timeout
+=======
+        if m_type == -3:	# P25 call signalling data
+            if self.debug > 10:
+                sys.stderr.write("process_qmsg: P25 info: %s\n" % msg.to_string())
+            js = json.loads(msg.to_string())
+            if ('srcaddr' in js) and (js['srcaddr'] != 0):
+                self.current_srcaddr = js['srcaddr']
+            if ('grpaddr' in js):
+                self.current_grpaddr = js['grpaddr']
+            if 'encrypted' in js:
+                self.current_encrypted = js['encrypted']
+            return 
+        elif m_type == -2:	# request from gui
+            cmd = msg.to_string()
+            if self.debug > 10:
+                sys.stderr.write('process_qmsg: command: %s\n' % cmd)
+            self.update_state(cmd, curr_time, int(msg.arg1()))
+            return
+        elif m_type == -1:	# timeout
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             if self.debug > 10:
                 sys.stderr.write('%f process_data_unit timeout\n' % time.time())
             self.update_state('timeout', curr_time)
             if self.logfile_workers:
                 self.logging_scheduler(curr_time)
             return
+<<<<<<< HEAD
         elif type < 0:
             sys.stderr.write('unknown message type %d\n' % (type))
+=======
+        elif m_type < 0:
+            sys.stderr.write('unknown message type %d\n' % (m_type))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             return
         s = msg.to_string()
         # nac is always 1st two bytes
         nac = (ord(s[0]) << 8) + ord(s[1])
         #assert nac != 0xffff   # FIXME: uncomment this after any remaining usages of 0xffff removed
         if nac == 0xffff:
+<<<<<<< HEAD
             if (type != 7) and (type != 12): # TDMA duid (end of call etc)
                 self.update_state('tdma_duid%d' % type, curr_time)
+=======
+            if (m_type != 7) and (m_type != 12): # TDMA duid (end of call etc)
+                self.update_state('tdma_duid%d' % m_type, curr_time)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                 return
             else: # voice channel derived TSBK or MBT PDU
                 nac = self.current_nac
         s = s[2:]
         if self.debug > 10:
+<<<<<<< HEAD
             sys.stderr.write('nac %x type %d at %f state %d len %d\n' %(nac, type, time.time(), self.current_state, len(s)))
         if (type == 7 or type == 12) and nac not in self.trunked_systems:
+=======
+            sys.stderr.write('nac %x type %d at %f state %d len %d\n' %(nac, m_type, time.time(), self.current_state, len(s)))
+        if (m_type == 7 or m_type == 12) and nac not in self.trunked_systems:
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             if not self.configs:
                 # TODO: allow whitelist/blacklist rather than blind automatic-add
                 self.add_trunked_system(nac)
             else:
+<<<<<<< HEAD
                 sys.stderr.write("%f NAC %x not configured\n" % (time.time(), nac))
+=======
+                # If trunk.tsv file configured with nac=0, use decoded nac instead
+                if 0 in self.trunked_systems:
+                    sys.stderr.write("%f Reconfiguring NAC from 0x000 to 0x%x\n" % (time.time(), nac))
+                    self.trunked_systems[nac] = self.trunked_systems.pop(0)
+                    self.configs[nac] = self.configs.pop(0)
+                    self.nacs = self.configs.keys()
+                    self.current_nac = nac
+                else:
+                    sys.stderr.write("%f NAC %x not configured\n" % (time.time(), nac))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                 return
-        if type == 7:	# trunk: TSBK
+        if m_type == 7:	# trunk: TSBK
             t = 0
             for c in s:
                 t = (t << 8) + ord(c)
             updated += self.trunked_systems[nac].decode_tsbk(t)
+<<<<<<< HEAD
         elif type == 12:	# trunk: MBT
+=======
+        elif m_type == 12:	# trunk: MBT
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             s1 = s[:10]		# header without crc
             s2 = s[12:]
             header = mbt_data = 0
@@ -829,13 +1214,21 @@ class rx_ctl (object):
 
             fmt = (header >> 72) & 0x1f
             sap = (header >> 64) & 0x3f
+<<<<<<< HEAD
             src = (header >> 48) & 0xffffff
+=======
+            src = (header >> 32) & 0xffffff
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             if fmt != 0x17: # only Extended Format MBT presently supported
                 return
 
             opcode = (header >> 16) & 0x3f
             if self.debug > 10:
+<<<<<<< HEAD
                 sys.stderr.write('type %d at %f state %d len %d/%d opcode %x [%x/%x]\n' %(type, time.time(), self.current_state, len(s1), len(s2), opcode, header,mbt_data))
+=======
+                sys.stderr.write('type %d at %f state %d len %d/%d opcode %x [%0x/%0x]\n' %(m_type, time.time(), self.current_state, len(s1), len(s2), opcode, header,mbt_data))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             updated += self.trunked_systems[nac].decode_mbt_data(opcode, src, header << 16, mbt_data << 32)
 
         if nac != self.current_nac:
@@ -850,7 +1243,7 @@ class rx_ctl (object):
         if updated:
             self.update_state('update', curr_time)
         else:
-            self.update_state('duid%d' % type, curr_time)
+            self.update_state('duid%d' % m_type, curr_time)
 
     def find_available_worker(self):
         for worker in self.logfile_workers:
@@ -958,7 +1351,7 @@ class rx_ctl (object):
         for frequency in gc_frequencies:	# expire working frequencies
             self.free_frequency(frequency, curr_time)
 
-    def update_state(self, command, curr_time):
+    def update_state(self, command, curr_time, cmd_data = 0):
         if not self.configs:
             return	# run in "manual mode" if no conf
 
@@ -981,9 +1374,16 @@ class rx_ctl (object):
                     sys.stderr.write("%f voice timeout\n" % time.time())
                 if self.hold_mode is False:
                     self.current_tgid = None
+<<<<<<< HEAD
+=======
+                self.current_srcaddr = 0
+                self.current_grpaddr = 0
+                self.current_encrypted = 0
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
+            tsys.expire_patches()
             if self.current_state == self.states.CC:
                 desired_tgid = None
                 if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time):
@@ -999,11 +1399,19 @@ class rx_ctl (object):
                         sys.stderr.write("%f voice update:  tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
+<<<<<<< HEAD
                     tsys.current_srcaddr = srcaddr
+=======
+                    self.current_srcaddr = srcaddr
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                     self.tgid_hold = new_tgid
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
+<<<<<<< HEAD
+=======
+                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             else: # check for priority tgid preemption
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid, hold=self.hold_mode)
                 if new_tgid != self.current_tgid:
@@ -1012,24 +1420,42 @@ class rx_ctl (object):
                         sys.stderr.write("%f voice preempt: tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
+<<<<<<< HEAD
                     tsys.current_srcaddr = srcaddr
+=======
+                    self.current_srcaddr = srcaddr
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                     self.tgid_hold = new_tgid
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
+<<<<<<< HEAD
+=======
+                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                 else:
                     new_frequency = None
         elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
             if self.current_state != self.states.CC:
+                self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 self.tgid_hold = self.current_tgid
                 self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+<<<<<<< HEAD
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         elif command == 'duid15' or command == 'tdma_duid15': # termination with channel release
             if self.current_state != self.states.CC:
                 if self.debug > 1:
                     sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
+<<<<<<< HEAD
                 tsys.current_srcaddr = 0
                 tsys.current_grpaddr = 0
+=======
+                self.current_srcaddr = 0
+                self.current_grpaddr = 0
+                self.current_encrypted = 0
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 self.tgid_hold = self.current_tgid
                 self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
@@ -1046,6 +1472,7 @@ class rx_ctl (object):
         elif command == 'duid7' or command == 'duid12': # tsbk/pdu should never arrive here...
             pass
         elif command == 'hold':
+<<<<<<< HEAD
             self.last_command = {'command': command, 'time': curr_time}
             if self.hold_mode is False and self.current_tgid:
                 self.tgid_hold = self.current_tgid
@@ -1068,6 +1495,29 @@ class rx_ctl (object):
         elif command == 'unset_hold':
             self.last_command = {'command': command, 'time': curr_time}
             if self.current_tgid:
+=======
+            if cmd_data > 0:
+                    self.tgid_hold = cmd_data
+                    self.tgid_hold_until = curr_time + 86400 * 10000
+                    self.hold_mode = True
+                    if self.debug > 0:
+                        sys.stderr.write ('%f set hold tg(%s) until %f\n' % (time.time(), self.tgid_hold, self.tgid_hold_until))
+                    if self.current_tgid != self.tgid_hold:
+                        self.current_tgid = self.tgid_hold
+                        self.current_srcaddr = 0
+                        self.current_grpaddr = 0
+                        self.current_encrypted = 0
+                        new_state = self.states.CC
+                        new_frequency = tsys.trunk_cc
+            elif self.hold_mode is False:
+                if self.current_tgid:
+                    self.tgid_hold = self.current_tgid
+                    self.tgid_hold_until = curr_time + 86400 * 10000
+                    self.hold_mode = True
+                    if self.debug > 0:
+                        sys.stderr.write ('%f set hold tg(%s) until %f\n' % (time.time(), self.tgid_hold, self.tgid_hold_until))
+            elif self.hold_mode is True:
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                 if self.debug > 0:
                     sys.stderr.write ('%f clear hold tg(%s)\n' % (time.time(), self.tgid_hold))
                 self.current_tgid = None
@@ -1075,8 +1525,12 @@ class rx_ctl (object):
                 self.tgid_hold_until = curr_time
                 self.hold_mode = False
         elif command == 'skip' or command == 'lockout':
+<<<<<<< HEAD
             self.last_command = {'command': command, 'time': curr_time}
             if self.current_tgid:
+=======
+            if self.current_tgid and cmd_data == self.current_id:
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
                 end_time = None
                 if command == 'skip':
                     end_time = curr_time + self.TGID_SKIP_TIME
@@ -1088,11 +1542,49 @@ class rx_ctl (object):
                 if self.current_state != self.states.CC:
                     new_state = self.states.CC
                     new_frequency = tsys.trunk_cc
+            else:
+                if (cmd_data <= 0) or (cmd_data > 65534):
+                    if self.debug > 0:
+                        sys.stderr.write("%f blacklist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                    return
+                tsys.add_blacklist(cmd_data)
+        elif command == 'whitelist':
+            if (cmd_data <= 0) or (cmd_data > 65534):
+                if self.debug > 0:
+                    sys.stderr.write("%f whitelist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                return
+            tsys.add_whitelist(cmd_data)
+            if self.current_tgid and self.whitelist and self.current_id not in self.whitelist:
+                self.current_tgid = None
+                self.tgid_hold = None
+                self.tgid_hold_until = curr_time
+                self.hold_mode = False
+                if self.current_state != self.states.CC:
+                    new_state = self.states.CC
+                    new_frequency = tsys.trunk_cc
+        elif command == 'reload':
+            nac = self.current_nac
+            sys.stderr.write("%f reloading blacklist & whitelist files for nac(%x)\n" % (time.time(), nac))
+            tsys.blacklist.clear()
+            if 'blacklist.file' in self.configs[nac]:
+                self.configs[nac]['blacklist'] = get_int_dict(self.configs[nac]['blacklist.file'])
+                tsys.blacklist = self.configs[nac]['blacklist']
+            if 'whitelist.file' in self.configs[nac]:
+                self.configs[nac]['whitelist'] = get_int_dict(self.configs[nac]['whitelist.file'])
+                tsys.whitelist = self.configs[nac]['whitelist']
+            self.current_tgid = None
+            self.tgid_hold = None
+            self.tgid_hold_until = curr_time
+            self.hold_mode = False
+            if self.current_state != self.states.CC:
+                new_state = self.states.CC
+                new_frequency = tsys.trunk_cc
         else:
             sys.stderr.write('update_state: unknown command: %s\n' % command)
             assert 0 == 1
 
         hunted_cc = tsys.hunt_cc(curr_time)
+<<<<<<< HEAD
 
         if self.enabled_nacs is not None and self.current_nac not in self.enabled_nacs:
             tsys.current_srcaddr = 0
@@ -1100,27 +1592,68 @@ class rx_ctl (object):
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
         elif self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
+=======
+        if tsys.wildcard_tsys and hunted_cc and self.current_nac != 0:
+            if self.debug >= 5:
+                sys.stderr.write("%f reset tsys to NAC 0 after control channel change\n" % time.time())
+            self.trunked_systems[0] = self.trunked_systems.pop(self.current_nac)
+            self.configs[0] = self.configs.pop(self.current_nac)
+            self.nacs = self.configs.keys()
+            self.current_nac = 0
+            self.current_state = self.states.CC
+            self.current_tgid = None
+            self.current_srcaddr = 0
+            self.current_grpaddr = 0
+            self.current_encrypted = 0
+            tsys.reset()
+
+        if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             if self.debug > 1:
                 sys.stderr.write("%f release tg(%s)\n" % (time.time(), self.current_tgid))
             self.tgid_hold = None
             self.current_tgid = None
+<<<<<<< HEAD
             tsys.current_srcaddr = 0
             tsys.current_grpaddr = 0
+=======
+            self.current_srcaddr = 0
+            self.current_grpaddr = 0
+            self.current_encrypted = 0
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             new_state = self.states.CC
             new_frequency = tsys.trunk_cc
         elif self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
+<<<<<<< HEAD
             tsys.current_srcaddr = 0
             tsys.current_grpaddr = 0
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
 
+=======
+            self.current_srcaddr = 0
+            self.current_grpaddr = 0
+            self.current_encrypted = 0
+            new_nac = self.find_next_tsys()
+            new_state = self.states.CC
+
+        if self.current_state == self.states.CC and self.tgid_hold_until <= curr_time:
+            self.do_metadata(1, None, None)
+
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if new_nac is not None:
             nac = self.current_nac = new_nac
             tsys = self.trunked_systems[nac]
             new_frequency = tsys.trunk_cc
+<<<<<<< HEAD
             tsys.current_srcaddr = 0
             tsys.current_grpaddr = 0
+=======
+            self.current_srcaddr = 0
+            self.current_grpaddr = 0
+            self.current_encrypted = 0
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             self.current_tgid = None
 
         if new_frequency is not None:
@@ -1134,12 +1667,16 @@ class rx_ctl (object):
                 'center_frequency': tsys.center_frequency,
                 'tdma':   new_slot, 
                 'wacn':   tsys.ns_wacn, 
+<<<<<<< HEAD
                 'sysid':  tsys.ns_syid,
                 'srcaddr':  tsys.current_srcaddr,
                 'grpaddr':  tsys.current_grpaddr,
                 'alg':  tsys.current_alg,
                 'algid':  tsys.current_algid,
                 'keyid':  tsys.current_keyid })
+=======
+                'sysid':  tsys.ns_syid})
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
         if new_state is not None:
             self.current_state = new_state

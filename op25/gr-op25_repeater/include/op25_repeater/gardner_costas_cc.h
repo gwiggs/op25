@@ -48,8 +48,13 @@ namespace gr {
        */
       static sptr make(float samples_per_symbol, float gain_mu, float gain_omega, float alpha, float beta, float max_freq, float min_freq);
       virtual void set_omega(float omega) {}
+<<<<<<< HEAD
       virtual float get_freq_error(void) {}
       virtual int get_error_band(void) {}
+=======
+      virtual float get_freq_error(void) { return 0; }
+      virtual void reset() {}
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
     };
 
   } // namespace op25_repeater

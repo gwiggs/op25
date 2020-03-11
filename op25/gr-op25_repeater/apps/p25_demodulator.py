@@ -90,20 +90,28 @@ class p25_demod_base(gr.hier_block2):
         self.symbol_rate = symbol_rate
         self.bb_sink = None
 
+        self.null_sink = blocks.null_sink(gr.sizeof_float)
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
         coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate()
+<<<<<<< HEAD
         sps = self.if_rate / self.symbol_rate
+=======
+        sps = self.if_rate / 4800
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if filter_type == 'rrc':
             ntaps = 7 * sps
             if ntaps & 1 == 0:
                 ntaps += 1
             coeffs = filter.firdes.root_raised_cosine(1.0, if_rate, symbol_rate, excess_bw, ntaps)
+<<<<<<< HEAD
         if filter_type == 'nxdn':
             coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_nxdn, symbol_rate=self.symbol_rate).generate()
             gain_adj = 1.8	# for nxdn48 6.25 KHz
             if self.symbol_rate == 4800:
                gain_adj = 0.77	# nxdn96 12.5 KHz
             coeffs = [x * gain_adj for x in coeffs]
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         if filter_type == 'gmsk':
             # lifted from gmsk.py
             _omega = sps
@@ -159,6 +167,9 @@ class p25_demod_base(gr.hier_block2):
         elif src == 'baseband_amp':
             self.connect(self.baseband_amp, sink)
             self.bb_sink = [self.baseband_amp, sink]
+
+    def reset(self):
+        pass
 
 class p25_demod_fb(p25_demod_base):
 
@@ -230,6 +241,7 @@ class p25_demod_cb(p25_demod_base):
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
         self.connect_state = None
+        self.aux_fm_connected = False
         self.offset = 0
         self.sps = 0.0
         self.lo_freq = 0
@@ -241,6 +253,8 @@ class p25_demod_cb(p25_demod_base):
         if filter_type == 'rrc':
             self.set_baseband_gain(0.61)
 
+        # local osc
+        self.lo = analog.sig_source_c (input_rate, analog.GR_SIN_WAVE, 0, 1.0, 0)
         self.mixer = blocks.multiply_cc()
         decimator_values = get_decim(input_rate)
         if decimator_values:
@@ -265,12 +279,16 @@ class p25_demod_cb(p25_demod_base):
             sys.stderr.write( 'Unable to use two-stage decimator for speed=%d\n' % (input_rate))
             # local osc
             self.lo = analog.sig_source_c (input_rate, analog.GR_SIN_WAVE, 0, 1.0, 0)
+<<<<<<< HEAD
             f1 = 7250
             f2 = 1450
             if filter_type == 'nxdn' and self.symbol_rate == 2400:	# nxdn48 6.25 KHz
                 f1 = 3125
                 f2 = 625
             lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, f1, f2, filter.firdes.WIN_HANN)
+=======
+            lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, 7250, 1450, filter.firdes.WIN_HANN)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             decimation = int(input_rate / if_rate)
             self.lpf = filter.fir_filter_ccf(decimation, lpf_coeffs)
             resampled_rate = float(input_rate) / float(decimation) # rate at output of self.lpf
@@ -325,13 +343,21 @@ class p25_demod_cb(p25_demod_base):
     def get_freq_error(self):	# get error in Hz (approx).
         return int(self.clock.get_freq_error() * self.symbol_rate)
 
-    def set_omega(self, omega):
-        sps = self.if_rate / float(omega)
+    def set_omega(self, rate):
+        self.set_symbol_rate(rate)
+        sps = self.if_rate / float(rate)
         if sps == self.sps:
             return
         self.sps = sps
+<<<<<<< HEAD
         print ('set_omega %d %f' % (omega, sps))
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         self.clock.set_omega(self.sps)
+
+    def reset(self):
+        if self.connect_state == 'cqpsk':
+            self.clock.reset()
 
     def set_relative_frequency(self, freq):
         if abs(freq) > ((self.input_rate / 2) - (self.if1 / 2)):
@@ -339,6 +365,7 @@ class p25_demod_cb(p25_demod_base):
             return False
         if freq == self.lo_freq:
             return True
+        #print 'set_relative_frequency', freq
         self.lo_freq = freq
         if self.if1:
             if freq not in self.t_cache.keys():
@@ -358,6 +385,7 @@ class p25_demod_cb(p25_demod_base):
     # assumes lock held or init
     def disconnect_chain(self):
         if self.connect_state == 'cqpsk':
+            self.disconnect_fm_demod()
             self.disconnect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
             self.disconnect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
@@ -378,6 +406,22 @@ class p25_demod_cb(p25_demod_base):
             assert 0 == 1
         if self.float_sink is not None:
             self.connect_float(self.float_sink[1])
+
+    # assumes lock held or init
+    def connect_fm_demod(self):
+        if self.aux_fm_connected or self.connect_state != 'cqpsk':	# only valid for cqpsk demod type
+            sys.stderr.write("connect_fm_demod() failed test\n")
+            return
+        self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+        self.aux_fm_connected = True
+
+    # assumes lock held or init
+    def disconnect_fm_demod(self):
+        if not self.aux_fm_connected or self.connect_state != 'cqpsk':	# only valid for cqpsk demod type
+            sys.stderr.write("disconnect_fm_demod() failed test\n")
+            return
+        self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+        self.aux_fm_connected = False
 
     def disconnect_float(self):
         # assumes lock held or init
@@ -415,3 +459,8 @@ class p25_demod_cb(p25_demod_base):
             self.connect(self.if_out, sink)
         elif src == 'agc':
             self.connect(self.agc, sink)
+<<<<<<< HEAD
+=======
+            self.complex_sink = [self.agc, sink]
+
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782

@@ -47,6 +47,7 @@ namespace gr {
 	p25p1_fdma p1fdma;
 	bool d_do_audio_output;
 	bool d_do_phase2_tdma;
+	bool d_do_nocrypt;
 	p25p2_tdma p2tdma;
 	bool d_do_msgq;
 	gr::msg_queue::sptr d_msg_queue;
@@ -54,19 +55,22 @@ namespace gr {
 
   // internal functions
 
-    void p25p2_queue_msg(int duid);
     void set_xormask(const char*p) ;
     void set_nac(int nac);
     void set_slotid(int slotid) ;
+    void set_slotkey(int key) ;
+    void reset_timer() ;
 	typedef std::vector<bool> bit_vector;
 	std::deque<int16_t> output_queue;
 
  public:
+#if 0
    virtual void forecast(int nof_output_items, gr_vector_int &nof_input_items_reqd);
+#endif
       // Nothing to declare in this block.
 
      public:
-      p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma);
+      p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
       ~p25_frame_assembler_impl();
 
       op25_audio op25audio;

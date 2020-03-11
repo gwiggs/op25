@@ -37,6 +37,7 @@
 namespace gr {
   namespace op25_repeater {
 
+<<<<<<< HEAD
     void p25_frame_assembler_impl::p25p2_queue_msg(int duid)
     {
 	static const unsigned char wbuf[2] = { (unsigned char) ((d_nac >> 8) & 0xff), (unsigned char) (d_nac & 0xff) };
@@ -50,6 +51,8 @@ namespace gr {
 	d_msg_queue->insert_tail(msg);
     }
 
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
     void p25_frame_assembler_impl::set_xormask(const char*p) {
 	p2tdma.set_xormask(p);
     }
@@ -63,11 +66,18 @@ namespace gr {
 	p2tdma.set_slotid(slotid);
     }
 
+    void p25_frame_assembler_impl::set_slotkey(int key) {
+    }
+
+    void p25_frame_assembler_impl::reset_timer() {
+	p1fdma.reset_timer();
+    }
+
     p25_frame_assembler::sptr
-    p25_frame_assembler::make(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma)
+    p25_frame_assembler::make(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt)
     {
       return gnuradio::get_initial_sptr
-        (new p25_frame_assembler_impl(udp_host, port, debug, do_imbe, do_output, do_msgq, queue, do_audio_output, do_phase2_tdma));
+        (new p25_frame_assembler_impl(udp_host, port, debug, do_imbe, do_output, do_msgq, queue, do_audio_output, do_phase2_tdma, do_nocrypt));
     }
 
     /*
@@ -87,7 +97,7 @@ static const int MAX_IN = 1;	// maximum number of input streams
 /*
  * The private constructor
  */
-    p25_frame_assembler_impl::p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma)
+    p25_frame_assembler_impl::p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt)
       : gr::block("p25_frame_assembler",
 		   gr::io_signature::make (MIN_IN, MAX_IN, sizeof (char)),
 		   gr::io_signature::make ((do_output) ? 1 : 0, (do_output) ? 1 : 0, (do_audio_output && do_output) ? sizeof(int16_t) : ((do_output) ? sizeof(char) : 0 ))),
@@ -95,17 +105,30 @@ static const int MAX_IN = 1;	// maximum number of input streams
 	d_do_output(do_output),
 	output_queue(),
         op25audio(udp_host, port, debug),
+<<<<<<< HEAD
 	p1fdma(op25audio, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output),
 	d_do_audio_output(do_audio_output),
 	d_do_phase2_tdma(do_phase2_tdma),
 	p2tdma(op25audio, 0, debug, do_msgq, queue, output_queue, do_audio_output),
+=======
+	p1fdma(op25audio, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
+	d_do_audio_output(do_audio_output),
+	d_do_phase2_tdma(do_phase2_tdma),
+	d_do_nocrypt(do_nocrypt),
+	p2tdma(op25audio, 0, debug, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue),
 	d_nac(0)
 {
+<<<<<<< HEAD
         fprintf(stderr, "p25_frame_assembler_impl: do_imbe[%d], do_output[%d], do_audio_output[%d], do_phase2_tdma[%d]\n", do_imbe, do_output, do_audio_output, do_phase2_tdma);
+=======
+        fprintf(stderr, "p25_frame_assembler_impl: do_imbe[%d], do_output[%d], do_audio_output[%d], do_phase2_tdma[%d], do_nocrypt[%d]\n", do_imbe, do_output, do_audio_output, do_phase2_tdma, do_nocrypt);
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 
+#if 0
 void
 p25_frame_assembler_impl::forecast(int nof_output_items, gr_vector_int &nof_input_items_reqd)
 {
@@ -122,6 +145,7 @@ p25_frame_assembler_impl::forecast(int nof_output_items, gr_vector_int &nof_inpu
    nof_samples_reqd = std::max(nof_samples_reqd, 256);
    std::fill(&nof_input_items_reqd[0], &nof_input_items_reqd[nof_inputs], nof_samples_reqd);
 }
+#endif
 
 int 
 p25_frame_assembler_impl::general_work (int noutput_items,
@@ -138,7 +162,10 @@ p25_frame_assembler_impl::general_work (int noutput_items,
 		if(p2tdma.rx_sym(in[i])) {
 			int rc = p2tdma.handle_frame();
 			if (rc > -1) {
+<<<<<<< HEAD
 				p25p2_queue_msg(rc);
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 				p1fdma.reset_timer(); // prevent P1 timeouts due to long TDMA transmissions
 			}
 		}

@@ -156,6 +156,7 @@ static const uint32_t gly23127DecTbl[2048] = {
 	4718595, 16387, 16387, 16386, 1048579, 2138115, 65539, 16387, 2099203, 69635, 1343491, 16387, 131075, 262147, 4206595, 526339, 
 	1048579, 69635, 141315, 16387, 1048578, 1048579, 1048579, 4456451, 69635, 69634, 524291, 69635, 1048579, 69635, 2113539, 163843 };
 
+<<<<<<< HEAD
 static const uint32_t gly24128EncTbl[4096] = {
 	0, 6379, 10558, 12757, 19095, 21116, 25513, 31554, 
 	36294, 38189, 42232, 48147, 51025, 57274, 61039, 63108, 
@@ -676,6 +677,8 @@ uint32_t gly24128Enc(uint32_t n) {
 	return gly24128EncTbl[n];
 }
 
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 uint32_t gly23127GetSyn (uint32_t pattern) {
 	uint32_t aux = 0x400000;
 
@@ -688,6 +691,7 @@ uint32_t gly23127GetSyn (uint32_t pattern) {
 	return pattern;
 }
 
+<<<<<<< HEAD
 uint32_t gly24128Dec (uint32_t n) { //based on gly23127Dec
 	uint32_t CW = n >> 1 ; //toss the parity bit
 	uint32_t correction = gly23127DecTbl[gly23127GetSyn(CW)];
@@ -697,6 +701,25 @@ uint32_t gly24128Dec (uint32_t n) { //based on gly23127Dec
 uint32_t gly23127Dec (uint32_t CW) {
 	uint32_t correction = gly23127DecTbl[gly23127GetSyn(CW)];
 	CW = (CW ^ correction) >> 11;
+=======
+uint32_t gly24128Dec (uint32_t n, size_t* errs) { //based on gly23127Dec
+	uint32_t CW = n >> 1 ; //toss the parity bit
+	uint32_t correction = gly23127DecTbl[gly23127GetSyn(CW)];
+	CW = (CW ^ correction) >> 11;
+
+	if (errs != NULL)
+		*errs = __builtin_popcount(correction);
+
+	return CW;
+}
+uint32_t gly23127Dec (uint32_t CW, size_t* errs) {
+	uint32_t correction = gly23127DecTbl[gly23127GetSyn(CW)];
+	CW = (CW ^ correction) >> 11;
+
+	if (errs != NULL)
+		*errs = __builtin_popcount(correction);
+
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	return CW;
 }
 

@@ -1,8 +1,13 @@
 /* -*- c++ -*- */
 /* 
+<<<<<<< HEAD
  * Copyright 2010, 2011, 2012, 2013, 2014, 2018 Max H. Parke KA1RBI 
  * Copyright 2017 Graham J. Norbury (modularization rewrite)
  * Copyright 2008, Michael Ossmann <mike@ossmann.com>
+=======
+ * Copyright 2010, 2011, 2012, 2013, 2014 Max H. Parke KA1RBI 
+ * Copyright 2017 Graham J. Norbury (modularization rewrite)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,8 +38,8 @@
 #include <string.h>
 #include <errno.h>
 #include <vector>
-#include <sys/time.h>
 #include "bch.h"
+#include "op25_msg_types.h"
 #include "op25_imbe_frame.h"
 #include "p25_frame.h"
 #include "p25_framer.h"
@@ -191,7 +196,12 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 	return 0;
 }
 
+<<<<<<< HEAD
 p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output) :
+=======
+p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt) :
+        qtimer(op25_timer(TIMEOUT_THRESHOLD)),
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         op25audio(udp),
 	write_bufp(0),
 	d_debug(debug),
@@ -201,13 +211,22 @@ p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_o
 	d_msg_queue(queue),
 	output_queue(output_queue),
 	framer(new p25_framer(debug)),
+<<<<<<< HEAD
 	d_do_audio_output(do_audio_output),
         ess_algid(0x80),
+=======
+        d_do_nocrypt(do_nocrypt),
+	d_do_audio_output(do_audio_output),
+        ess_algid(0),
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         ess_keyid(0),
 	vf_tgid(0),
 	p1voice_decode((debug > 0), udp, output_queue)
 {
+<<<<<<< HEAD
 	gettimeofday(&last_qtime, 0);
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 
 void 
@@ -226,14 +245,20 @@ p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, const uint8_t*
 		memcpy(&wbuf[p], buf, len);	// copy data
 		p += len;
 	}
+<<<<<<< HEAD
 	gr::message::sptr msg = gr::message::make_from_string(std::string(wbuf, p), duid, 0, 0);
 	d_msg_queue->insert_tail(msg);
 	gettimeofday(&last_qtime, 0);
+=======
+	send_msg(std::string(wbuf, p), duid);
+	qtimer.reset();
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 
 void
 p25p1_fdma::process_HDU(const bit_vector& A)
 {
+<<<<<<< HEAD
         uint32_t MFID;
 	int i, j, k, ec;
 	uint32_t gly;
@@ -241,15 +266,26 @@ p25p1_fdma::process_HDU(const bit_vector& A)
 	std::string s = "";
 	int failures = 0;
 	k = 0;
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	if (d_debug >= 10) {
 		fprintf (stderr, "%s NAC 0x%03x HDU:  ", logts.get(), framer->nac);
 	}
 
+<<<<<<< HEAD
+=======
+        uint32_t MFID;
+	int i, j, k, ec;
+	size_t errs = 0, gly_errs = 0;
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+	k = 0;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	for (i = 0; i < 36; i ++) {
 		uint32_t CW = 0;
 		for (j = 0; j < 18; j++) {  // 18 bits / cw
 			CW = (CW << 1) + A [ hdu_codeword_bits[k++] ];
  		}
+<<<<<<< HEAD
 		gly = gly24128Dec(CW);
 		HB[27 + i] = gly & 63;
 		if (CW ^ gly24128Enc(gly))
@@ -265,6 +301,13 @@ p25p1_fdma::process_HDU(const bit_vector& A)
 		}
 		return;
 	}
+=======
+		HB[27 + i] = gly24128Dec(CW, &errs) & 63;
+		gly_errs += errs;
+	}
+	ec = rs16.decode(HB); // Reed Solomon (36,20,17) error correction
+
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	if (ec >= 0) {
 		j = 27;												// 72 bit MI
 		for (i = 0; i < 9;) {
@@ -279,6 +322,7 @@ p25p1_fdma::process_HDU(const bit_vector& A)
 		vf_tgid   = ((HB[j+5] & 0x0f) << 12) + (HB[j+6] << 6) +  HB[j+7];				// 16 bit TGID
 
 		if (d_debug >= 10) {
+<<<<<<< HEAD
 			fprintf (stderr, "ESS: tgid=%d, mfid=%x, algid=%x, keyid=%x, mi=", vf_tgid, MFID, ess_algid, ess_keyid);
 			for (i = 0; i < 9; i++) {
 				fprintf(stderr, "%02x ", ess_mi[i]);
@@ -318,11 +362,44 @@ void
 p25p1_fdma::process_LDU1(const bit_vector& A)
 {
 	int hmg_failures;
+=======
+			fprintf (stderr, "ESS: tgid=%d, mfid=%x, algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x",
+				 vf_tgid, MFID, ess_algid, ess_keyid,
+				 ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8]);
+		}
+	}
+
+	if (d_debug >= 10) {
+		fprintf (stderr, ", gly_errs=%lu, rs_errs=%d\n", gly_errs, ec);
+	}
+}
+
+void
+p25p1_fdma::process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB)
+{
+	process_duid(framer->duid, framer->nac, NULL, 0);
+
+	int i, j, k;
+	k = 0;
+	for (i = 0; i < 24; i ++) { // 24 10-bit codewords
+		uint32_t CW = 0;
+		for (j = 0; j < 10; j++) {  // 10 bits / cw
+			CW = (CW << 1) + A[ imbe_ldu_ls_data_bits[k++] ];
+		}
+		HB[39 + i] = hmg1063Dec( CW >> 4, CW & 0x0f );
+	}
+}
+
+void
+p25p1_fdma::process_LDU1(const bit_vector& A)
+{
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	if (d_debug >= 10) {
 		fprintf (stderr, "%s NAC 0x%03x LDU1: ", logts.get(), framer->nac);
 	}
 
 	std::vector<uint8_t> HB(63,0); // hexbit vector
+<<<<<<< HEAD
 	hmg_failures = process_LLDU(A, HB);
 	if (hmg_failures < 6)
 		process_LCW(HB);
@@ -481,9 +558,185 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 					send_msg(s, -3);
 					if (d_debug >= 10)
 						fprintf(stderr, ", srcaddr=%d, grpaddr=%d", srcaddr, grpaddr);
+=======
+	process_LLDU(A, HB);
+	process_LCW(HB);
+
+	if (d_debug >= 10) {
+		fprintf (stderr, "\n");
+	}
+
+	process_voice(A);
+}
+
+void
+p25p1_fdma::process_LDU2(const bit_vector& A)
+{
+	if (d_debug >= 10) {
+		fprintf (stderr, "%s NAC 0x%03x LDU2: ", logts.get(), framer->nac);
+	}
+
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+	process_LLDU(A, HB);
+
+        int i, j, ec;
+	ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
+	if (ec >= 0) {	// save info if good decode
+		j = 39;												// 72 bit MI
+		for (i = 0; i < 9;) {
+			ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
+			ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
+			ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
+			j += 4;
+		}
+		ess_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);					// 8 bit AlgId
+		ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];			// 16 bit KeyId
+
+		if (d_debug >= 10) {
+			fprintf (stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
+				 ess_algid, ess_keyid,
+				 ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
+				 ec); 
+		}
+	}
+	process_voice(A);
+}
+
+void
+p25p1_fdma::process_TTDU()
+{
+	process_duid(framer->duid, framer->nac, NULL, 0);
+
+	if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
+		op25audio.send_audio_flag(op25_audio::DRAIN);
+	}
+}
+
+void
+p25p1_fdma::process_TDU3()
+{
+	if (d_debug >= 10) {
+		fprintf (stderr, "%s NAC 0x%03x TDU3:  ", logts.get(), framer->nac);
+	}
+
+	process_TTDU();
+
+	if (d_debug >= 10) {
+		fprintf (stderr, "\n");
+	}
+}
+
+void
+p25p1_fdma::process_TDU15(const bit_vector& A)
+{
+	if (d_debug >= 10) {
+		fprintf (stderr, "%s NAC 0x%03x TDU15:  ", logts.get(), framer->nac);
+	}
+
+	process_TTDU();
+
+	int i, j, k;
+	size_t gly_errs = 0, errs = 0;
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+	k = 0;
+	for (i = 0; i <= 22; i += 2) {
+		uint32_t CW = 0;
+		for (j = 0; j < 12; j++) {   // 12 24-bit codewords
+			CW = (CW << 1) + A [ hdu_codeword_bits[k++] ];
+			CW = (CW << 1) + A [ hdu_codeword_bits[k++] ];
+		}
+		uint32_t D = gly24128Dec(CW, &errs);
+		HB[39 + i] = D >> 6;
+		HB[40 + i] = D & 63;
+	}
+	process_LCW(HB);
+ 
+	if (d_debug >= 10) {
+		fprintf (stderr, ", gly_errs=%lu\n", gly_errs);
+	}
+}
+
+void
+p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
+{
+	int ec = rs12.decode(HB); // Reed Solomon (24,12,13) error correction
+	if (ec < 0)
+		return; // failed CRC
+
+	int i, j;
+	std::vector<uint8_t> lcw(9,0); // Convert hexbits to bytes
+	j = 0;
+	for (i = 0; i < 9;) {
+		lcw[i++] = (uint8_t)  (HB[j+39]         << 2) + (HB[j+40] >> 4);
+		lcw[i++] = (uint8_t) ((HB[j+40] & 0x0f) << 4) + (HB[j+41] >> 2);
+		lcw[i++] = (uint8_t) ((HB[j+41] & 0x03) << 6) +  HB[j+42];
+		j += 4;
+	}
+
+	int pb =   (lcw[0] >> 7);
+	int sf =  ((lcw[0] & 0x40) >> 6);
+	int lco =   lcw[0] & 0x3f;
+	std::string s = "";
+
+	if (d_debug >= 10)
+		fprintf(stderr, "LCW: ec=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
+
+	if (pb == 0) { // only decode if unencrypted
+		if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01) || (lcw[1] == 0x90))) {	// sf=0, explicit MFID in standard or Motorola format
+			switch (lco) {
+				case 0x00: { // Group Voice Channel User
+					uint16_t grpaddr = (lcw[4] << 8) + lcw[5];
+					uint32_t srcaddr = (lcw[6] << 16) + (lcw[7] << 8) + lcw[8];
+					s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
+					send_msg(s, -3);
+					if (d_debug >= 10)
+						fprintf(stderr, ", srcaddr=%d, grpaddr=%d", srcaddr, grpaddr);
 					break;
 				}
 			}
+		} else if (sf == 1) {						// sf=1, implicit MFID
+			switch (lco) {
+				case 0x02: { // Group Voice Channel Update
+					std::string tsbk(12,0);
+					uint16_t ch_A  = (lcw[1] << 8) + lcw[2];
+					uint16_t grp_A = (lcw[3] << 8) + lcw[4];
+					uint16_t ch_B  = (lcw[5] << 8) + lcw[6];
+					uint16_t grp_B = (lcw[7] << 8) + lcw[8];
+					if (d_debug >= 10)
+						fprintf(stderr, ", ch_A=%d, grp_A=%d, ch_B=%d, grp_B=%d", ch_A, grp_A, ch_B, grp_B);
+					tsbk[0] = 0xff; tsbk[1] = 0xff;
+					tsbk[2] = 0x82;
+					tsbk[3] = 0x00;
+					tsbk[4] = ch_A >> 8; tsbk[5] = ch_A & 0xff;
+					tsbk[6] = grp_A >> 8; tsbk[7] = grp_A & 0xff;
+					tsbk[8] = ch_B >> 8; tsbk[9] = ch_B & 0xff;
+					tsbk[10] = grp_B >> 8; tsbk[11] = grp_B & 0xff;
+					send_msg(tsbk, 7);
+					break;
+				}
+				case 0x04: { // Group Voice Channel Update Explicit
+					std::string tsbk(12,0);
+					uint8_t  svcopts = (lcw[2]     )         ;
+					uint16_t grpaddr = (lcw[3] << 8) + lcw[4];
+					uint16_t ch_T    = (lcw[5] << 8) + lcw[6];
+					uint16_t ch_R    = (lcw[7] << 8) + lcw[8];
+					if (d_debug >= 10)
+						fprintf(stderr, ", svcopts=0x%02x, grpaddr=%d, ch_T=%d, ch_R=%d", svcopts, grpaddr, ch_T, ch_R);
+					tsbk[0] = 0xff; tsbk[1] = 0xff;
+					tsbk[2] = 0x83;
+					tsbk[3] = 0x00;
+					tsbk[4] = svcopts;
+					tsbk[5] = 0x00;
+					tsbk[6] = ch_T >> 8; tsbk[7] = ch_T & 0xff;
+					tsbk[8] = ch_R >> 8; tsbk[9] = ch_R & 0xff;
+					tsbk[10] = grpaddr >> 8; tsbk[11] = grpaddr & 0xff;
+					send_msg(tsbk, 7);
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
+					break;
+				}
+
+			}
+<<<<<<< HEAD
 		} else if (sf == 1) {						// sf=1, implicit MFID
 			switch (lco) {
 				case 0x02: { // Group Voice Channel Update
@@ -579,9 +832,170 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 					for (int i = 0; i < 12; i++) {
 						fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
 					}
+=======
+		}
+	}
+	if (d_debug >= 10) {
+		fprintf(stderr, " : %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+			lcw[0], lcw[1], lcw[2], lcw[3], lcw[4], lcw[5], lcw[6], lcw[7], lcw[8]);
+	}
+}
+
+void
+p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
+{
+	uint8_t op, lb = 0;
+	block_vector deinterleave_buf;
+	if (process_blocks(fr, fr_len, deinterleave_buf) == 0) {
+		for (int j = 0; (j < deinterleave_buf.size()) && (lb == 0); j++) {
+			if (crc16(deinterleave_buf[j].data(), 12) != 0) // validate CRC
+				return;
+
+			lb = deinterleave_buf[j][0] >> 7;	// last block flag
+			op = deinterleave_buf[j][0] & 0x3f;	// opcode
+			process_duid(framer->duid, framer->nac, deinterleave_buf[j].data(), 10);
+
+			if (d_debug >= 10) {
+				fprintf (stderr, "%s NAC 0x%03x TSBK: op=%02x : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+					 logts.get(), framer->nac, op,
+					 deinterleave_buf[j][0], deinterleave_buf[j][1], deinterleave_buf[j][2], deinterleave_buf[j][3],
+					 deinterleave_buf[j][4], deinterleave_buf[j][5], deinterleave_buf[j][6], deinterleave_buf[j][7],
+					 deinterleave_buf[j][8], deinterleave_buf[j][9], deinterleave_buf[j][10], deinterleave_buf[j][11]);
+			}
+		}
+	}
+}
+
+void
+p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
+{
+	uint8_t fmt, sap, blks, op = 0;
+	block_vector deinterleave_buf;
+	if ((process_blocks(fr, fr_len, deinterleave_buf) == 0) &&
+	    (deinterleave_buf.size() > 0)) {			// extract all blocks associated with this PDU
+		if (crc16(deinterleave_buf[0].data(), 12) != 0) // validate PDU header
+			return;
+
+		fmt =  deinterleave_buf[0][0] & 0x1f;
+		sap =  deinterleave_buf[0][1] & 0x3f;
+		blks = deinterleave_buf[0][6] & 0x7f;
+
+		if ((sap == 61) && ((fmt == 0x17) || (fmt == 0x15))) { // Multi Block Trunking messages
+			if (blks > deinterleave_buf.size())
+				return; // insufficient blocks available
+
+			uint32_t crc1 = crc32(deinterleave_buf[1].data(), ((blks * 12) - 4) * 8);
+			uint32_t crc2 = (deinterleave_buf[blks][8] << 24) + (deinterleave_buf[blks][9] << 16) +
+					(deinterleave_buf[blks][10] << 8) + deinterleave_buf[blks][11];
+
+			if (crc1 != crc2)
+				return; // payload crc check failed
+
+			process_duid(framer->duid, framer->nac, deinterleave_buf[0].data(), ((blks + 1) * 12) - 4);
+
+			if (d_debug >= 10) {
+				if (fmt == 0x15) {
+					op =   deinterleave_buf[1][0] & 0x3f; // Unconfirmed MBT format
+				} else if (fmt == 0x17) {
+					op =   deinterleave_buf[0][7] & 0x3f; // Alternate MBT format
+				}
+
+				char s0[40], s1[40], s2[40], s3[40];
+				sprintf(s0, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+					    deinterleave_buf[0][0], deinterleave_buf[0][1], deinterleave_buf[0][2], deinterleave_buf[0][3],
+					    deinterleave_buf[0][4], deinterleave_buf[0][5], deinterleave_buf[0][6], deinterleave_buf[0][7],
+					    deinterleave_buf[0][8], deinterleave_buf[0][9], deinterleave_buf[0][10], deinterleave_buf[0][11]);
+				sprintf(s1, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+					    deinterleave_buf[1][0], deinterleave_buf[1][1], deinterleave_buf[1][2], deinterleave_buf[1][3],
+					    deinterleave_buf[1][4], deinterleave_buf[1][5], deinterleave_buf[1][6], deinterleave_buf[1][7],
+					    deinterleave_buf[1][8], deinterleave_buf[1][9], deinterleave_buf[1][10], deinterleave_buf[1][11]);
+				sprintf(s2, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+					    deinterleave_buf[2][0], deinterleave_buf[2][1], deinterleave_buf[2][2], deinterleave_buf[2][3],
+					    deinterleave_buf[2][4], deinterleave_buf[2][5], deinterleave_buf[2][6], deinterleave_buf[2][7],
+					    deinterleave_buf[2][8], deinterleave_buf[2][9], deinterleave_buf[2][10], deinterleave_buf[2][11]);
+				sprintf(s3, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+					    deinterleave_buf[3][0], deinterleave_buf[3][1], deinterleave_buf[3][2], deinterleave_buf[3][3],
+					    deinterleave_buf[3][4], deinterleave_buf[3][5], deinterleave_buf[3][6], deinterleave_buf[3][7],
+					    deinterleave_buf[3][8], deinterleave_buf[3][9], deinterleave_buf[3][10], deinterleave_buf[3][11]);
+				fprintf (stderr, "%s NAC 0x%03x PDU:  fmt=%02x, op=0x%02x : %s %s %s %s\n",
+					 logts.get(), framer->nac, fmt, op, s0, s1, s2, s3);
+			}
+		} else if (d_debug >= 10) {
+			fprintf(stderr, "%s NAC 0x%03x PDU:  non-MBT message ignored\n", logts.get(), framer->nac);
+		}
+
+	}
+}
+
+int
+p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, block_vector& dbuf)
+{
+	bit_vector bv;
+	bv.reserve(fr_len >> 1);
+	for (unsigned int d=0; d < fr_len >> 1; d++) {	  // eliminate status bits from frame
+		if ((d+1) % 36 == 0)
+			continue;
+		bv.push_back(fr[d*2]);
+		bv.push_back(fr[d*2+1]);
+	}
+
+	int bl_cnt = 0;
+	int bl_len = (bv.size() - (48+64)) / 196;
+	for (bl_cnt = 0; bl_cnt < bl_len; bl_cnt++) { // deinterleave,  decode trellis1_2, save 12 byte block
+		dbuf.push_back({0,0,0,0,0,0,0,0,0,0,0,0});
+		if(block_deinterleave(bv, 48+64+bl_cnt*196, dbuf[bl_cnt].data()) != 0) {
+			dbuf.pop_back();
+			return -1;
+		}
+	}
+	return (bl_cnt > 0) ? 0 : -1;
+}
+
+void
+p25p1_fdma::process_voice(const bit_vector& A)
+{
+	if (d_do_imbe || d_do_audio_output) {
+		for(size_t i = 0; i < nof_voice_codewords; ++i) {
+			voice_codeword cw(voice_codeword_sz);
+			uint32_t E0, ET;
+			uint32_t u[8];
+			char s[128];
+			size_t errs = 0;
+			imbe_deinterleave(A, cw, i);
+
+			if ((d_do_output && !d_do_audio_output) || (d_debug >= 9)) {
+				// recover 88-bit IMBE voice code word : only needed for logging or wireshark
+				errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+			}
+
+			if (d_debug >= 9) {
+				packed_codeword p_cw;
+				imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+				sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+						p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
+					       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
+				fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(), s, errs); // print to log in one operation
+			}
+			if (d_do_audio_output) {
+				if (!d_do_nocrypt || !encrypted()) {
+					std::string encr = "{\"encrypted\" : " + std::to_string(0) + "}";
+					send_msg(encr, -3);
+					p1voice_decode.rxframe(cw);
+				} else {
+					std::string encr = "{\"encrypted\" : " + std::to_string(1) + "}";
+					send_msg(encr, -3);
+				}
+			}
+
+			if (d_do_output && !d_do_audio_output) {
+				sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+				for (size_t j=0; j < strlen(s); j++) {
+					output_queue.push_back(s[j]);
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 				}
 				fprintf(stderr, "\n");
 			}
+<<<<<<< HEAD
 		} else if (d_debug >= 10) {
 			fprintf(stderr, "%s NAC 0x%03x PDU:  non-MBT message ignored\n", logts.get(), framer->nac);
 		}
@@ -647,6 +1061,8 @@ p25p1_fdma::process_voice(const bit_vector& A)
 					output_queue.push_back(s[j]);
 				}
 			}
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 		}
 	}
 }
@@ -654,8 +1070,12 @@ p25p1_fdma::process_voice(const bit_vector& A)
 void
 p25p1_fdma::reset_timer()
 {
+<<<<<<< HEAD
 	//update last_qtime with current time
 	gettimeofday(&last_qtime, 0);
+=======
+	qtimer.reset();
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 
 void p25p1_fdma::send_msg(const std::string msg_str, long msg_type)
@@ -663,7 +1083,11 @@ void p25p1_fdma::send_msg(const std::string msg_str, long msg_type)
 	if (!d_do_msgq || d_msg_queue->full_p())
 		return;
 
+<<<<<<< HEAD
 	gr::message::sptr msg = gr::message::make_from_string(msg_str, msg_type, 0, 0);
+=======
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), 0, logts.get_ts());
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	d_msg_queue->insert_tail(msg);
 }
 
@@ -731,6 +1155,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
   }
   if (d_do_msgq && !d_msg_queue->full_p()) {
     // check for timeout
+<<<<<<< HEAD
     gettimeofday(&currtime, 0);
     int64_t diff_usec = currtime.tv_usec - last_qtime.tv_usec;
     int64_t diff_sec  = currtime.tv_sec  - last_qtime.tv_sec ;
@@ -742,13 +1167,23 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
     if (diff_usec >= TIMEOUT_THRESHOLD) {
       if (d_debug > 10)
         fprintf(stderr, "%010lu.%06lu p25p1_fdma::rx_sym() timeout\n", currtime.tv_sec, currtime.tv_usec);
+=======
+    if (qtimer.expired()) {
+      if (d_debug > 10)
+        fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get());
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
       if (d_do_audio_output) {
         op25audio.send_audio_flag(op25_audio::DRAIN);
       }
 
+<<<<<<< HEAD
       gettimeofday(&last_qtime, 0);
       gr::message::sptr msg = gr::message::make(-1, 0, 0);
+=======
+      qtimer.reset();
+      gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), 0, logts.get_ts());
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
       d_msg_queue->insert_tail(msg);
     }
   }

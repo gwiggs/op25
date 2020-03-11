@@ -4,6 +4,8 @@
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019 Max H. Parke KA1RBI
 # 
+# Copyright 2018-2019 Graham J. Norbury
+# 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
 # 
@@ -67,7 +69,7 @@ from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
 
 from terminal import op25_terminal
-from sockaudio  import socket_audio
+from sockaudio  import audio_thread
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
@@ -76,7 +78,11 @@ os.environ['IMBE'] = 'soft'
 
 WIRESHARK_PORT = 23456
 
+<<<<<<< HEAD
 _def_interval = 3.0	# sec
+=======
+_def_interval = 1.0	# sec
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 _def_file_dir = '../www/images'
 
 # The P25 receiver
@@ -97,6 +103,7 @@ class p25_rx_block (gr.top_block):
         self.rtl_found = False
         self.channel_rate = options.sample_rate
         self.fft_sink = None
+<<<<<<< HEAD
         self.last_error_update = 0
         self.error_band = 0
         self.tuning_error = 0
@@ -106,9 +113,19 @@ class p25_rx_block (gr.top_block):
         self.last_change_freq = 0
         self.last_change_freq_at = time.time()
         self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
+=======
+        self.constellation_sink = None
+        self.symbol_sink = None
+        self.eye_sink = None
+        self.mixer_sink = None
+        self.target_freq = 0.0
+        self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
+        self.meta_server = None
+        self.stream_url = ""
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
         self.src = None
-        if (not options.input) and (not options.audio) and (not options.audio_if):
+        if (not options.ifile) and (not options.input) and (not options.audio) and (not options.audio_if) and (not options.symbols):
             # check if osmocom is accessible
             try:
                 import osmosdr
@@ -141,6 +158,14 @@ class p25_rx_block (gr.top_block):
             if options.freq_corr:
                 self.src.set_freq_corr(options.freq_corr)
 
+            if options.gain_mode is not None:
+                if options.gain_mode:
+                    self.src.set_gain_mode(True, 0)
+                else:
+                    self.src.set_gain_mode(False, 0)
+                sys.stderr.write("Osmocom driver gain_mode: %s\n" % self.src.get_gain_mode())
+
+
         if options.audio:
             self.channel_rate = 48000
             self.baseband_input = True
@@ -148,15 +173,14 @@ class p25_rx_block (gr.top_block):
         if options.audio_if:
             self.channel_rate = 96000
 
-        if options.ifile:
-            self.channel_rate = 96000	# TODO: fixme
-
         # setup (read-only) attributes
         self.symbol_rate = 4800
         self.symbol_deviation = 600.0
         self.basic_rate = 24000
         _default_speed = 4800
         self.options = options
+        #
+        self.set_sps(_default_speed)
 
         # keep track of flow graph connections
         self.cnxns = []
@@ -181,29 +205,64 @@ class p25_rx_block (gr.top_block):
 
         self.input_q = gr.msg_queue(10)
         self.output_q = gr.msg_queue(10)
+        self.meta_q = gr.msg_queue(10)
  
         # configure specified data source
         if options.input:
             self.open_file(options.input)
+<<<<<<< HEAD
+=======
+        elif (self.rtl_found or options.frequency):
+            self.open_usrp()
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         elif options.audio_if:
             self.open_audio_c(self.channel_rate, options.gain, options.audio_input)
         elif options.audio:
             self.open_audio(self.channel_rate, options.gain, options.audio_input)
         elif options.ifile:
+<<<<<<< HEAD
             self.open_ifile(self.channel_rate, options.gain, options.ifile, options.seek)
         elif (self.rtl_found or options.frequency):
             self.open_usrp()
+=======
+            self.open_ifile2(self.channel_rate, options.ifile)
+	elif options.symbols:
+            self.open_symbols(self.symbol_rate, options.symbols, options.seek)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         else:
             pass
 
         # attach terminal thread and make sure currently tuned frequency is displayed
         self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
         if self.terminal is None:
+<<<<<<< HEAD
             sys.stderr.write('warning: no terminal attached\n')
 
         # attach audio thread
         if self.options.udp_player:
             self.audio = socket_audio("127.0.0.1", self.options.wireshark_port, self.options.audio_output, False, self.options.audio_gain)
+=======
+            sys.exit(1)
+
+        # attach meta server thread
+        if self.options.metacfg is not None:
+            from icemeta import meta_server
+            self.meta_server = meta_server(self.meta_q, self.options.metacfg, debug=self.options.verbosity)
+            try:
+                with open(self.options.metacfg) as json_file:
+                    meta_cfg = json.load(json_file)
+                self.stream_url = "http://" + meta_cfg['icecastServerAddress'] + "/" + meta_cfg['icecastMountpoint'] + meta_cfg['icecastMountExt']
+                sys.stderr.write("streaming server url=\"%s\"\n" % self.stream_url)
+            except (ValueError, KeyError):
+                sys.stderr.write("error reading metadata config file: %s, streaming server url disabled\n" % self.options.metacfg)
+        else:
+            self.meta_server = None
+            sys.stderr.write("metadata update not enabled\n")
+
+        # attach audio thread
+        if self.options.udp_player:
+            self.audio = audio_thread("127.0.0.1", self.options.wireshark_port, self.options.audio_output, False, self.options.audio_gain)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         else:
             self.audio = None
 
@@ -213,11 +272,10 @@ class p25_rx_block (gr.top_block):
         global speeds
         global WIRESHARK_PORT
 
-        sps = 5		# samples / symbol
-
         self.rx_q = gr.msg_queue(100)
         udp_port = 0
 
+<<<<<<< HEAD
         vocoder = self.options.vocoder
         wireshark = self.options.wireshark
         wireshark_host = self.options.wireshark_host
@@ -227,13 +285,33 @@ class p25_rx_block (gr.top_block):
             wireshark_host = "127.0.0.1"
 
         if wireshark or (wireshark_host != "127.0.0.1"):
+=======
+        if self.options.udp_player:
+            self.options.vocoder = True
+            self.options.wireshark = True
+            self.options.wireshark_host = "127.0.0.1"
+
+        if self.options.wireshark or (self.options.wireshark_host != "127.0.0.1"):
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             udp_port = self.options.wireshark_port
 
         self.tdma_state = False
         self.xor_cache = {}
 
+        self.fft_state  = False
+        self.c4fm_state = False
+        self.fscope_state = False
+        self.corr_state = False
+        self.fac_state = False
+        self.fsk4_demod_connected = False
+        self.psk_demod_connected = False
+        self.fsk4_demod_mode = False
+        self.corr_i_chan = False
+
         if self.baseband_input:
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
+	elif self.options.symbols:
+            self.demod = None
         else:	# complex input
             # local osc
             self.lo_freq = self.options.offset
@@ -243,7 +321,7 @@ class p25_rx_block (gr.top_block):
                                                        demod_type = self.options.demod_type,
                                                        relative_freq = self.lo_freq,
                                                        offset = self.options.offset,
-                                                       if_rate = sps * 4800,
+                                                       if_rate = self.sps * 4800,
                                                        gain_mu = self.options.gain_mu,
                                                        costas_alpha = self.options.costas_alpha,
                                                        excess_bw = self.options.excess_bw,
@@ -253,6 +331,7 @@ class p25_rx_block (gr.top_block):
         if self.options.phase2_tdma:
             num_ambe = 1
 
+<<<<<<< HEAD
         self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=vocoder, num_ambe=num_ambe, wireshark_host=wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity)
 
         # connect it all up
@@ -293,6 +372,31 @@ class p25_rx_block (gr.top_block):
         if self.options.raw_symbols:
             self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
             self.connect(self.demod, self.sink_sf)
+=======
+        self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=self.options.vocoder, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity, nocrypt=self.options.nocrypt)
+
+        # connect it all up
+	if self.options.symbols:
+            self.connect(source, self.decoder)
+        else:
+            self.connect(source, self.demod, self.decoder)
+
+            if self.options.plot_mode == 'constellation':
+                self.toggle_constellation()
+            elif self.options.plot_mode == 'symbol':
+                self.toggle_symbol()
+            elif self.options.plot_mode == 'fft':
+                self.toggle_fft()
+            elif self.options.plot_mode == 'datascope':
+                self.toggle_eye()
+            elif self.options.plot_mode == 'mixer':
+                self.toggle_mixer()
+
+            if self.options.raw_symbols:
+                sys.stderr.write("Saving raw symbols to file: %s\n" % self.options.raw_symbols)
+                self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
+                self.connect(self.demod, self.sink_sf)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
         logfile_workers = []
         if self.options.phase2_tdma:
@@ -306,7 +410,7 @@ class p25_rx_block (gr.top_block):
                 logfile_workers.append({'demod': demod, 'decoder': decoder, 'active': False})
                 self.connect(source, demod, decoder)
 
-        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers)
+        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update)
 
         self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
 
@@ -342,7 +446,11 @@ class p25_rx_block (gr.top_block):
 
     def configure_tdma(self, params):
         if params['tdma'] is not None and not self.options.phase2_tdma:
+<<<<<<< HEAD
             sys.stderr.write("***TDMA request for frequency %d failed- phase2_tdma option not enabled\n" % params['freq'])
+=======
+            sys.stderr.write("***TDMA request for frequency %d failed- phase2_tdma option not enabled" % params['freq'])
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
             return
         set_tdma = False
         if params['tdma'] is not None:
@@ -360,9 +468,15 @@ class p25_rx_block (gr.top_block):
             rate = 6000
         else:
             rate = 4800
-        sps = self.basic_rate / rate
-        self.demod.set_symbol_rate(rate)   # this and the foll. call should be merged?
-        self.demod.clock.set_omega(float(sps))
+
+        self.set_sps(rate)
+	if not self.options.symbols:
+            self.demod.set_omega(rate)
+
+    def set_sps(self, rate):
+        self.sps = self.basic_rate / rate
+        if (self.eye_sink is not None):
+            self.eye_sink.set_sps(self.sps)
 
     def error_tracking(self):
         UPDATE_TIME = 3
@@ -389,10 +503,15 @@ class p25_rx_block (gr.top_block):
             sys.stderr.write('frequency_tracking\t%d\t%d\t%d\t%d\t%f\n' % (freq_error, self.error_band, self.tuning_error, self.freq_correction, e))
 
     def change_freq(self, params):
+<<<<<<< HEAD
+=======
+        last_freq = self.last_freq_params['freq']
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         self.last_freq_params = params
         freq = params['freq']
         offset = self.options.offset
         center_freq = params['center_frequency']
+<<<<<<< HEAD
         if self.options.freq_error_tracking:
             self.error_tracking()
         self.last_change_freq = freq
@@ -403,6 +522,34 @@ class p25_rx_block (gr.top_block):
         if self.options.hamlib_model:
             self.hamlib.set_freq(freq)
             return
+=======
+
+        if freq != last_freq:								# ignore requests to tune to same freq
+            if self.options.hamlib_model:
+                self.hamlib.set_freq(freq)
+            elif (not self.options.symbols) and params['center_frequency']:
+                relative_freq = center_freq - freq
+                if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
+                    self.lo_freq = self.options.offset					# relative tune not possible
+                    self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
+                    self.set_freq(freq + offset)					# direct tune instead
+                else:    
+                    self.lo_freq = self.options.offset + relative_freq
+                    if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
+                        self.demod.reset()                                              # reset gardner-costas loop
+                        self.set_freq(center_freq + offset)
+                        if self.fft_sink:
+                            self.fft_sink.set_relative_freq(relative_freq)
+                    else:
+                        self.lo_freq = self.options.offset				# relative tune unsuccessful
+                        self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
+                        self.set_freq(freq + offset)					# direct tune instead
+            elif not self.options.symbols:
+                self.set_freq(freq + offset)
+            else:
+                pass	# fake tuning when playing back symbols file
+            self.decoder.reset_timer()
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
         if not center_freq:
             self.lo_freq = offset + self.tuning_error
@@ -432,14 +579,35 @@ class p25_rx_block (gr.top_block):
         self.freq_update()
 
     def freq_update(self):
+<<<<<<< HEAD
         if self.input_q.full_p():
             return
         params = self.last_freq_params
         params['json_type'] = 'change_freq'
         params['fine_tune'] = self.options.fine_tune
+=======
+        params = self.last_freq_params
+        params['json_type'] = 'change_freq'
+        params['fine_tune'] = self.options.fine_tune
+        params['stream_url'] = self.stream_url
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
         self.input_q.insert_tail(msg)
+
+    def meta_update(self, tgid, tag):
+        if self.meta_server is None:
+            return
+
+        if tgid is None:
+            metadata = "[idle]"
+        else:
+            metadata = "[" + str(tgid) + "]"
+        if tag is not None:
+            metadata += " " + tag
+
+        msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
+        self.meta_q.insert_tail(msg)
 
     def hamlib_attach(self, model):
         Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)	# RIG_DEBUG_TRACE
@@ -475,7 +643,8 @@ class p25_rx_block (gr.top_block):
         self.src.set_freq_corr(ppm)
 
     def set_freq_tune(self, val):
-        self.demod.set_relative_frequency(val + self.lo_freq)
+        if self.demod is not None:
+            self.demod.set_relative_frequency(val + self.lo_freq)
 
     def set_freq(self, target_freq):
         """
@@ -494,6 +663,7 @@ class p25_rx_block (gr.top_block):
         self.target_freq = target_freq
         tune_freq = target_freq + self.options.calibration + self.options.offset + self.options.fine_tune
         r = self.src.set_center_freq(tune_freq)
+        self.demod.reset()      # reset gardner-costas loop
 
         if self.fft_sink:
             self.fft_sink.set_center_freq(target_freq)
@@ -509,6 +679,150 @@ class p25_rx_block (gr.top_block):
             return True
 
         return False
+
+    def adj_tune(self, tune_incr):
+        if self.target_freq == 0.0:
+            return False
+        self.options.fine_tune += tune_incr;
+        self.set_freq(self.target_freq)
+        return True
+
+    def toggle_plot(self, plot_type):
+	if self.options.symbols:
+            return              # plots not supported when replacing symbol
+
+        plot_off = 0
+        if (self.fft_sink is not None):
+            self.toggle_fft()
+            plot_off = 1
+        elif (self.constellation_sink is not None):
+            self.toggle_constellation()
+            plot_off = 2
+        elif (self.symbol_sink is not None):
+            self.toggle_symbol()
+            plot_off = 3
+        elif (self.eye_sink is not None):
+            self.toggle_eye()
+            plot_off = 4
+        elif (self.mixer_sink is not None):
+            self.toggle_mixer()
+            plot_off = 5
+
+        if (plot_type == 1) and (plot_off != 1):	# fft
+            self.toggle_fft()
+        elif (plot_type == 2) and (plot_off != 2):	# constellation
+            self.toggle_constellation()
+        elif (plot_type == 3) and (plot_off != 3):	# symbol
+            self.toggle_symbol()
+        elif (plot_type == 4) and (plot_off != 4):	# datascope
+            self.toggle_eye()
+        elif (plot_type == 5) and (plot_off != 5):	# mixer output
+            self.toggle_mixer()
+
+    def toggle_mixer(self):
+        if (self.mixer_sink is None):
+            self.mixer_sink = mixer_sink_c()
+            self.add_plot_sink(self.mixer_sink)
+            self.lock()
+            self.demod.connect_complex('mixer', self.mixer_sink)
+            self.unlock()
+        elif (self.mixer_sink is not None):
+            self.lock()
+            self.demod.disconnect_complex()
+            self.unlock()
+            self.mixer_sink.kill()
+            self.remove_plot_sink(self.mixer_sink)
+            self.mixer_sink = None
+
+    def toggle_fft(self):
+        if (self.fft_sink is None):
+            self.fft_sink = fft_sink_c()
+            self.add_plot_sink(self.fft_sink)
+            if self.options.decim_amt > 1:
+                self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
+            else:
+                self.spectrum_decim = None
+            self.fft_sink.set_offset(self.options.offset)
+            self.fft_sink.set_center_freq(self.target_freq)
+            self.fft_sink.set_width(self.options.sample_rate)
+            self.lock()
+            if self.spectrum_decim is not None:
+                self.connect(self.spectrum_decim, self.fft_sink)
+                self.demod.connect_complex('src', self.spectrum_decim)
+            else:
+                self.demod.connect_complex('src', self.fft_sink)
+            self.unlock()
+        elif (self.fft_sink is not None):
+            self.lock()
+            if self.spectrum_decim is not None:
+                self.disconnect(self.spectrum_decim, self.fft_sink)
+            self.demod.disconnect_complex()
+            self.unlock()
+            self.fft_sink.kill()
+            self.remove_plot_sink(self.fft_sink)
+            self.spectrum_decim = None
+            self.fft_sink = None
+
+    def toggle_constellation(self):
+        if (self.constellation_sink is None):
+            if self.options.demod_type != 'cqpsk':
+                sys.stderr.write("Constellation Plot requires 'cqpsk' modulation\n")
+                return
+            self.constellation_sink = constellation_sink_c()
+            self.add_plot_sink(self.constellation_sink)
+            self.lock()
+            self.demod.connect_complex('diffdec', self.constellation_sink)
+            self.unlock()
+        elif (self.constellation_sink is not None):
+            self.lock()
+            self.demod.disconnect_complex()
+            self.unlock()
+            self.constellation_sink.kill()
+            self.remove_plot_sink(self.constellation_sink)
+            self.constellation_sink = None
+ 
+    def toggle_symbol(self):
+        if (self.symbol_sink is None):
+            self.symbol_sink = symbol_sink_f()
+            self.add_plot_sink(self.symbol_sink)
+            self.lock()
+            self.demod.connect_float(self.symbol_sink)
+            self.unlock()
+        elif (self.symbol_sink is not None):
+            self.lock()
+            self.demod.disconnect_float()
+            self.unlock()
+            self.symbol_sink.kill()
+            self.remove_plot_sink(self.symbol_sink)
+            self.symbol_sink = None
+
+    def toggle_eye(self):
+        if (self.eye_sink is None):
+            self.eye_sink = eye_sink_f(sps=self.sps)
+            self.add_plot_sink(self.eye_sink)
+            self.lock()
+            self.demod.connect_fm_demod() # make sure fm demod exists in flowgraph
+            self.demod.connect_bb('symbol_filter', self.eye_sink)
+            self.unlock()
+        elif (self.eye_sink is not None):
+            self.lock()
+            self.demod.disconnect_bb()    # attempt to remove fm demod if not needed
+            self.demod.disconnect_fm_demod()
+            self.unlock()
+            self.eye_sink.kill()
+            self.remove_plot_sink(self.eye_sink)
+            self.eye_sink = None
+
+    def add_plot_sink(self, plot):
+        if plot not in self.plot_sinks:
+            self.plot_sinks.append(plot)
+        if self.options.terminal_type.startswith('http:'):
+            plot.gnuplot.set_interval(_def_interval)
+            plot.gnuplot.set_output_dir(_def_file_dir)
+
+    def remove_plot_sink(self, plot):
+        if plot in self.plot_sinks:
+            self.plot_sinks.remove(plot)
 
     # read capture file properties (decimation etc.)
     #
@@ -541,9 +855,12 @@ class p25_rx_block (gr.top_block):
             self.src.set_antenna(self.options.antenna)
         self.info["capture-rate"] = capture_rate
         self.src.set_bandwidth(capture_rate)
+<<<<<<< HEAD
         r = self.src.set_center_freq(self.options.frequency + self.options.calibration+ self.options.offset + self.options.fine_tune)
         if not r:
             sys.stderr.write("__set_rx_from_osmosdr(): failed to set frequency\n")
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         # capture file
         # if preserve:
         if 0:
@@ -576,6 +893,23 @@ class p25_rx_block (gr.top_block):
         self.source = blocks.multiply_const_cc(gain)
         self.connect(ifile, throttle, self.source)
         self.__set_rx_from_audio(speed)
+
+    def open_ifile2(self, capture_rate, file_name):
+        source = blocks.file_source(gr.sizeof_gr_complex, file_name, False)
+        throttle = blocks.throttle(gr.sizeof_gr_complex, capture_rate)
+        self.connect(source, throttle)
+        self.__build_graph(throttle, capture_rate)
+
+    def open_symbols(self, symbol_rate, file_name, file_seek):
+        sys.stderr.write("Reading raw symbols from file: %s\n" % self.options.symbols)
+        source = blocks.file_source(gr.sizeof_char, file_name, False)
+        if file_seek > 0:
+            rc = source.seek(file_seek*4800, 0) # Seek in seconds (4800sps)
+            assert rc == True
+        throttle = blocks.throttle(gr.sizeof_char, symbol_rate)
+        throttle.set_max_noutput_items(symbol_rate/50);
+        self.connect(source, throttle)
+        self.__build_graph(throttle, symbol_rate)
 
     def open_audio_c(self, capture_rate, gain, audio_input_filename):
         self.info = {
@@ -639,7 +973,11 @@ class p25_rx_block (gr.top_block):
 
     def process_qmsg(self, msg):
         # return true = end top block
+<<<<<<< HEAD
         RX_COMMANDS = 'skip lockout hold'.split()
+=======
+        RX_COMMANDS = 'skip lockout hold whitelist reload'
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         s = msg.to_string()
         t = msg.type()
         if t == -4:
@@ -660,6 +998,13 @@ class p25_rx_block (gr.top_block):
             self.set_freq(freq)
         elif s == 'adj_tune':
             freq = msg.arg1()
+<<<<<<< HEAD
+=======
+            self.adj_tune(freq)
+        elif s == 'toggle_plot':
+            plot_type = msg.arg1()
+            self.toggle_plot(plot_type)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
         elif s == 'add_default_config':
@@ -701,18 +1046,25 @@ class rx_main(object):
 
     def process_qmsg(self, msg):
         if self.tb.process_qmsg(msg):
+            #self.tb.stop()
             self.keep_running = False
 
     def run(self):
         try:
             self.tb.start()
-            while self.keep_running:
-                time.sleep(1)
+            if self.options.symbols:
+                self.tb.wait()
+            else:
+                while self.keep_running:
+                    time.sleep(1)
+            sys.stderr.write('Flowgraph completed. Exiting\n')
         except:
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
         if self.tb.terminal:
             self.tb.terminal.end_terminal()
+        if self.tb.meta_server:
+            self.tb.meta_server.stop()
         if self.tb.audio:
             self.tb.audio.stop()
         self.tb.stop()
@@ -727,19 +1079,20 @@ class rx_main(object):
         parser.add_option("-a", "--audio", action="store_true", default=False, help="use direct audio input")
         parser.add_option("-A", "--audio-if", action="store_true", default=False, help="soundcard IF mode (use --calibration to set IF freq)")
         parser.add_option("-I", "--audio-input", type="string", default="", help="pcm input device name.  E.g., hw:0,0 or /dev/dsp")
-        parser.add_option("-i", "--input", type="string", default=None, help="input file name")
+        parser.add_option("-i", "--input", default=None, help="input file name")
         parser.add_option("-b", "--excess-bw", type="eng_float", default=0.2, help="for RRC filter", metavar="Hz")
         parser.add_option("-c", "--calibration", type="eng_float", default=0.0, help="USRP offset or audio IF frequency", metavar="Hz")
         parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.04, help="value of alpha for Costas loop", metavar="Hz")
         parser.add_option("-D", "--demod-type", type="choice", default="cqpsk", choices=('cqpsk', 'fsk4'), help="cqpsk | fsk4")
-        parser.add_option("-P", "--plot-mode", type="string", default=None, help="one or more of constellation, fft, symbol, datascope (comma-separated)")
+        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'fft', 'symbol', 'datascope', 'mixer'), help="constellation | fft | symbol | datascope | mixer")
         parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
-        parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
+        parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K, symbols file seek in seconds")
         parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
         parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
-        parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
+        parser.add_option("-M", "--metacfg", type="string", default=None, help="Icecast Metadata Config File")
+        parser.add_option("-S", "--sample-rate", type="int", default=960000, help="source samp rate")
         parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
         parser.add_option("-T", "--trunk-conf-file", type="string", default=None, help="trunking config file name")
         parser.add_option("-v", "--verbosity", type="int", default=0, help="message debug level")
@@ -751,12 +1104,18 @@ class rx_main(object):
         parser.add_option("-W", "--wireshark-host", type="string", default="127.0.0.1", help="Wireshark host")
         parser.add_option("-u", "--wireshark-port", type="int", default=23456, help="Wireshark udp port")
         parser.add_option("-r", "--raw-symbols", type="string", default=None, help="dump decoded symbols to file")
+        parser.add_option("--symbols", type="string", default="", help="playback symbols file (captured using -r)")
+        parser.add_option("-R", "--rx-subdev-spec", type="subdev", default=(0, 0), help="select USRP Rx side A or B (default=A)")
         parser.add_option("-g", "--gain", type="eng_float", default=None, help="set USRP gain in dB (default is midpoint) or set audio gain")
+        parser.add_option("--gain-mode", type="int", help="Control SDR AGC with set_gain_mode()")
         parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
         parser.add_option("-x", "--audio-gain", type="eng_float", default="1.0", help="audio gain (default = 1.0)")
+<<<<<<< HEAD
         parser.add_option("-X", "--freq-error-tracking", action="store_true", default=False, help="enable experimental frequency error tracking")
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         parser.add_option("-U", "--udp-player", action="store_true", default=False, help="enable built-in udp audio player")
         parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
         parser.add_option("-d", "--fine-tune", type="eng_float", default=0.0, help="fine tuning")

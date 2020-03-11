@@ -28,27 +28,33 @@
 #include <iostream>
 #include <deque>
 #include <assert.h>
+#include <gnuradio/msg_queue.h>
 
 #include "bit_utils.h"
 #include "check_frame_sync.h"
 
+#include "frame_sync_magics.h"
 #include "p25p2_vf.h"
 #include "mbelib.h"
 #include "ambe.h"
 
 #include "ysf_const.h"
 #include "dmr_const.h"
+#include "dmr_cai.h"
 #include "p25_frame.h"
+#include "op25_timer.h"
 #include "op25_imbe_frame.h"
 #include "software_imbe_decoder.h"
 #include "op25_audio.h"
+<<<<<<< HEAD
 #include "nxdn_const.h"
 #include "nxdn.h"
+=======
+#include "log_ts.h"
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 namespace gr{
     namespace op25_repeater{
-
-static const uint64_t DSTAR_FRAME_SYNC_MAGIC = 0x444445101440LL;  // expanded into dibits
 
 enum rx_types {
 	RX_TYPE_NONE=0,
@@ -67,8 +73,8 @@ static const struct _mode_data {
 	int sync_offset;
 	int fragment_len;   // symbols
 	int expiration;
-	uint64_t sync;
 } MODE_DATA[RX_N_TYPES] = {
+<<<<<<< HEAD
 	{"NONE",   0,0,0,0,0},
 	{"P25",    48,0,864,1728,   P25_FRAME_SYNC_MAGIC},
 	{"DMR",    48,66,144,1728,  DMR_VOICE_SYNC_MAGIC},
@@ -76,7 +82,33 @@ static const struct _mode_data {
 	{"YSF",    40,0,480,480*2,  YSF_FRAME_SYNC_MAGIC},
 	{"NXDN_EHR", 36,0,192,192*2, NXDN_FS6E_SYNC_MAGIC},
 	{"NXDN_CAC", 44,0,192,192*2, NXDN_POSTFS_SYNC_MAGIC}
+=======
+	{"NONE",   0,0,0,0},
+	{"P25",    48,0,864,1728},
+	{"DMR",    48,66,144,1728},
+	{"DSTAR",  48,72,96,2016*2},
+	{"YSF",    40,0,480,480*2}
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 };   // index order must match rx_types enum
+
+static const int KNOWN_MAGICS = 12;
+static const struct _sync_magic {
+	int type;
+	uint64_t magic;
+} SYNC_MAGIC[KNOWN_MAGICS] = {
+	{RX_TYPE_P25, P25_FRAME_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_BS_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_BS_DATA_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_MS_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_MS_DATA_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_MS_RC_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T1_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T1_DATA_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T2_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T2_DATA_SYNC_MAGIC},
+	{RX_TYPE_DSTAR, DSTAR_FRAME_SYNC_MAGIC},
+	{RX_TYPE_YSF, YSF_FRAME_SYNC_MAGIC}
+}; // maps sync patterns to protocols
 
 enum codeword_types {
 	CODEWORD_P25P1,
@@ -92,17 +124,21 @@ class rx_sync {
 public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
-	rx_sync(const char * options, int debug);
+	void set_slot_mask(int mask);
+	void set_xor_mask(int mask);
+	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
+
 private:
+	void sync_timeout();
 	void cbuf_insert(const uint8_t c);
-	void dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
 	void output(int16_t * samp_buf, const ssize_t slot_id);
 	static const int CBUF_SIZE=864;
 	static const int NSAMP_OUTPUT = 160;
 
+	op25_timer sync_timer;
 	unsigned int d_symbol_count;
 	uint64_t d_sync_reg;
 	uint8_t d_cbuf[CBUF_SIZE*2];
@@ -112,16 +148,23 @@ private:
 	int d_rx_count;
 	unsigned int d_expires;
 	int d_shift_reg;
+	int d_slot_mask;
 	unsigned int d_unmute_until[2];
 	p25p2_vf interleaver;
 	mbe_parms cur_mp[2];
 	mbe_parms prev_mp[2];
 	mbe_parms enh_mp[2];
+	mbe_tone tone_mp[2];
 	software_imbe_decoder d_software_decoder[2];
 	std::deque<int16_t> d_output_queue[2];
+	dmr_cai dmr;
+	int d_msgq_id;
+	gr::msg_queue::sptr d_msg_queue;
 	bool d_stereo;
 	int d_debug;
 	op25_audio d_audio;
+	log_ts logts;
+	uint16_t d_xor_mask;
 };
 
     } // end namespace op25_repeater

@@ -37,12 +37,23 @@ should open.  You must click on the terminal window to restore it to
 focus, otherwise all keystrokes are consumed by gnuplot.  Once in the
 terminal window there are several keyboard commands:
  h - hold
+ H - hold/goto the specified tgid
  l - lockout
  s - skip
  q - quit program
+ , - decrease fine tune by 100Hz
+ . - increase fine tune by 100Hz
+ < - decrease fine tune by 1200Hz
+ > - increase fine tune by 1200Hz
+ 1 - toggle fft plot
+ 2 - toggle constellation plot (cqpsk)
+ 3 - toggle symbol plot
+ 4 - toggle datascope plot
+ 5 - toggle mixer plot
 There are also two experimental commands (should not be used in -T mode)
  f - manually change frequencies
  t - if currently tuned to a CC, autostart scanning talkgroups
+
 The "t" command allows trunk tracking without setting up a trunking TSV
 file.  However running with the -T <filename> command line option is
 preferred as that allows use of white/black lists and talkgroup tags files.
@@ -75,6 +86,9 @@ received and played back with either of the following methods:
 -or-
 2. Execute the command:
    nc -kluvw 1 127.0.0.1 23456 | aplay -c1 -f S16_LE -r 8000
+-or-
+3. Execute the command:
+   vlc.exe --clock-jitter=500 --network-caching=0 --demux=rawaud --rawaud-channels 1 --rawaud-samplerate 8000 udp://@:23456
 
 NOTE: audio underruns are to be expected when using nc | aplay as the
 pcm stream is interrupted every time a radio transmission ends.  The
@@ -93,13 +107,14 @@ As of this writing (Aug 2017) it is still necessary to specify the "-w"
 
 PLOT MODES
 ==========
-Three types of plotting are currently implemented, via the -P parameter:
+Four types of plotting are currently implemented, via the -P parameter:
+ * fft
  * constellation
  * datascope
  * symbol
-The symbol mode is allowed both in fsk4 and cqpsk modes.  The datascope
-mode works only with fsk4 demod mode (-D fsk4).  The constellation mode
-only works when the cqpsk demod mode is selected (or defaulted).
+The symbol and datascope mode is allowed both in fsk4 and cqpsk modes.
+The constellation mode only works when the cqpsk demod mode is selected
+(or defaulted).
 
 A couple of notes specific to plot mode:
 
@@ -134,7 +149,7 @@ Options:
   -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
                         cqpsk | fsk4
   -P PLOT_MODE, --plot-mode=PLOT_MODE
-                        constellation | symbol | datascope
+                        constellation | fft | symbol | datascope | mixer
   -f Hz, --frequency=Hz
                         USRP center frequency
   -F IFILE, --ifile=IFILE
@@ -154,11 +169,14 @@ Options:
   -v VERBOSITY, --verbosity=VERBOSITY
                         message debug level
   -V, --vocoder         voice codec
+  -n, --nocrypt         silence encrypted traffic
   -o Hz, --offset=Hz    tuning offset frequency [to circumvent DC offset]
   -p, --pause           block on startup
   -w, --wireshark       output data to Wireshark
   -W WIRESHARK_HOST, --wireshark-host=WIRESHARK_HOST
                         Wireshark host
+  -u WIRESHARK_PORT, --wireshark-port=WIRESHARK_PORT
+                        Wireshark udp port
   -r RAW_SYMBOLS, --raw-symbols=RAW_SYMBOLS
                         dump decoded symbols to file
   -R RX_SUBDEV_SPEC, --rx-subdev-spec=RX_SUBDEV_SPEC
@@ -171,8 +189,11 @@ Options:
                         gain settings
   -O AUDIO_OUTPUT, --audio-output=AUDIO_OUTPUT
                         audio output device name
+  -U, --udp-player      enable built-in udp audio player
   -q FREQ_CORR, --freq-corr=FREQ_CORR
                         frequency correction
+  -d FINE_TUNE, --fine-tune=FINE_TUNE
+                        fine tuning
   -2, --phase2-tdma     enable phase2 tdma decode
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation
@@ -218,7 +239,7 @@ for either P1/FDMA or P2/TDMA.
 Below is a summary of the major config file keys:
 demod_type:     'cqpsk' for qpsk p25 only; 'fsk4' for ysf/dstar/dmr/fsk4 p25
 filter_type:    'rc' for p25; 'rrc' for dmr and ysf; 'gmsk' for d-star
-plot:           'fft', 'constellation', 'datascope', 'symbol'
+plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer'
                 [if more than one plot desired, provide a comma-separated list]
 destination:    'udp://host:port' or 'file://<filename>'
 name:           arbitrary string used to identify channels and devices

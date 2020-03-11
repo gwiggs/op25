@@ -1,5 +1,6 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
+// Copyright 2018, 2019 gnorbury@bondcar.com
 // 
 // This file is part of OP25
 // 
@@ -23,6 +24,7 @@ var d_debug = 1;
 var http_req = new XMLHttpRequest();
 var counter1 = 0;
 var error_val = null;
+var fine_tune = null;
 var current_tgid = null;
 var active_tgid = null;
 var active_nac = null;
@@ -35,6 +37,7 @@ var nfinal_count = 0;
 var n200_count = 0;
 var r200_count = 0;
 var SEND_QLIMIT = 5;
+<<<<<<< HEAD
 var summary_mode = true;
 var enable_changed = false;
 var enable_status = [];
@@ -42,6 +45,15 @@ var last_srcaddr = [];
 var last_alg = [];
 var last_algid = [];
 var last_keyid = [];
+=======
+var c_freq = 0;
+var c_system = null;
+var c_tag = null;
+var c_srcaddr = 0;
+var c_grpaddr = 0;
+var c_encrypted = 0;
+var c_nac = 0;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -227,6 +239,7 @@ function nav_update(command) {
 }
 
 function f_select(command) {
+<<<<<<< HEAD
     var div_list = ["status", "settings", "rx", "about"];
     var orig_command = command;
     if (command == "rx") {
@@ -254,6 +267,41 @@ function f_select(command) {
     nav_update(orig_command);
     if (command == "settings")
         f_list();
+=======
+    var div_status = document.getElementById("div_status")
+    var div_plot   = document.getElementById("div_plot")
+    var div_about  = document.getElementById("div_about")
+    var div_s2     = document.getElementById("div_s2")
+    var div_s3     = document.getElementById("div_s3")
+    var ctl1 = document.getElementById("controls1");
+    var ctl2 = document.getElementById("controls2");
+    if (command == "status") {
+        div_status.style['display'] = "";
+        div_plot.style['display'] = "none";
+        div_about.style['display'] = "none";
+        div_s2.style['display'] = "";
+        div_s3.style['display'] = "";
+        ctl1.style['display'] = "";
+        ctl2.style['display'] = "none";
+    }
+    else if (command == "plot") {
+        div_status.style['display'] = "";
+        div_plot.style['display'] = "";
+        div_about.style['display'] = "none";
+        div_s2.style['display'] = "none";
+        div_s3.style['display'] = "none";
+        ctl1.style['display'] = "none";
+        ctl2.style['display'] = "";
+    }
+    else if (command == "about") {
+        div_status.style['display'] = "none";
+        div_plot.style['display'] = "none";
+        div_about.style['display'] = "";
+        ctl1.style['display'] = "none";
+        ctl2.style['display'] = "none";
+    }
+    nav_update(command);
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 
 function is_digit(s) {
@@ -273,12 +321,18 @@ function rx_update(d) {
             }
         }
     }
+    else {
+        var img = document.getElementById("img0");
+        img.style["display"] = "none";
+    }
     error_val = d["error"];
+    fine_tune = d['fine_tune'];
 }
 
 // frequency, system, and talkgroup display
 
 function change_freq(d) {
+<<<<<<< HEAD
 
 	var displayTgid = "&mdash;";
 	var displayTag = "&nbsp;";
@@ -349,6 +403,59 @@ function change_freq(d) {
 	var z = document.getElementById("dSys");
 	z.style = "font-size: " + z1 + "px; " + "font-weight: " + fstyle + ";";
 
+=======
+    c_freq = d['freq'];
+    c_system = d['system'];
+    current_tgid = d['tgid'];
+    c_tag = d['tag'];
+    c_stream_url = d['stream_url'];
+    channel_status();
+}
+
+function channel_status() {
+    var html;
+    var s2_freq = document.getElementById("s2_freq");
+    var s2_tg = document.getElementById("s2_tg");
+    var s2_grp = document.getElementById("s2_grp");
+    var s2_src = document.getElementById("s2_src");
+
+    html = "";
+    if (c_stream_url != "") {
+        html += "<a href=\"" + c_stream_url + "\">";
+    }
+    if (c_freq != 0) {
+        html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
+    }
+    if (c_system != null)
+    {
+        html += "<span class=\"value\"> &nbsp;" + c_system + "</span>";
+    }
+    if (c_stream_url != "") {
+        html += "</a>"
+    }
+    s2_freq.innerHTML = html
+
+    html = "";
+    if (current_tgid != null) {
+        html += "<span class=\"value\">" + c_tag + "</span>";
+        if (c_encrypted) {
+            html += "<span class=\"label\">[ENCRYPTED]</span>";
+        }
+    }
+    s2_tg.innerHTML = html;
+
+    html = "";
+    if (current_tgid != null)
+        html += "<span class=\"value\">" + current_tgid + "</span>";
+    else if (c_grpaddr != 0)
+        html += "<span class=\"value\">" + c_grpaddr + "</span>";
+    s2_grp.innerHTML = html;
+
+    html = "";
+    if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
+        html += "<span class=\"value\">" + c_srcaddr + "</span>";
+    s2_src.innerHTML = html;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 	
 
@@ -451,16 +558,33 @@ function f_enable_changed(ele, nac) {
 
 // additional system info: wacn, sysID, rfss, site id, secondary control channels, freq error
 
+<<<<<<< HEAD
 function trunk_detail(d) {
+=======
+function trunk_update(d) {
+    var do_hex = {"syid":0, "sysid":0, "wacn": 0};
+    var do_float = {"rxchan":0, "txchan":0};
+    var srcaddr = 0;
+    var encrypted = 0;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
     var html = "";
+
+    if (d['nac'] != undefined)
+        c_nac = d['nac']
+
     for (var nac in d) {
         if (!is_digit(nac.charAt(0)))
             continue;
+<<<<<<< HEAD
         last_srcaddr[nac] = d[nac]['srcaddr'];
         last_alg[nac] = d[nac]['alg'];
         last_algid[nac] = d[nac]['algid'];
         last_keyid[nac] = d[nac]['keyid'];
 	html += "<div class=\"content\">";     // open div-content
+=======
+        if (nac != c_nac)
+            continue;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         html += "<span class=\"nac\">";
         html += d[nac]["sysname"] + " . . . . . . . . ";
         html += "NAC " + "0x" + parseInt(nac).toString(16) + " ";
@@ -485,11 +609,22 @@ function trunk_detail(d) {
         if (error_val != null) {
             html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx) </span><br>";
         }
+        if (fine_tune != null) {
+            html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
+        }
 
-// system frequencies table
+        var div_s1 = document.getElementById("div_s1");
+        div_s1.innerHTML = html;
 
+<<<<<<< HEAD
         html += "<br><div class=\"info\"><div class=\"system\">"; //    open div-info  open div-system
         html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>"; 
+=======
+// system frequencies table
+        html = ""
+        html += "<div class=\"info\"><div class=\"system\">";
+        html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>"; // was width=350
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         html += "<tr><th colspan=99 style=\"align: center\">System Frequencies</th></tr>";
         html += "<tr><th>Frequency</th><th>Last Seen</th><th colspan=2>Talkgoup ID</th><th>Count</th></tr>";
         var ct = 0;
@@ -508,6 +643,7 @@ function trunk_detail(d) {
         html += adjacent_data(d[nac]['adjacent_data']);
         html += "</div><br></div><hr><br>";   // close div-content  close div-info  box-br  hr-separating each NAC
     }
+<<<<<<< HEAD
     return html;
 }
 
@@ -579,6 +715,20 @@ function config_list(d) {
     html += "<option value=\"New Configuration\">New Configuration</option>";
     html += "</select>";
     document.getElementById("cfg_list_area").innerHTML = html;
+=======
+
+    if (d['srcaddr'] != undefined)
+        c_srcaddr = d['srcaddr']
+    if (d['grpaddr'] != undefined)
+        c_grpaddr = d['grpaddr']
+    if (d['encrypted'] != undefined)
+        c_encrypted = d['encrypted']
+
+    var div_s3 = document.getElementById("div_s3");
+    div_s3.innerHTML = html;
+
+    channel_status();
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 
 function config_data(d) {
@@ -689,11 +839,37 @@ function send_process() {
     http_req.send(cmd);
 }
 
+function f_tune_button(command) {
+    send_command('adj_tune', command);
+}
+
+function f_plot_button(command) {
+    send_command('toggle_plot', command);
+}
+
 function f_scan_button(command) {
-    if (current_tgid == null)
-        send_command(command, -1);
-    else
-        send_command(command, current_tgid);
+    var _tgid = 0;
+
+    if (command == "goto") {
+        command = "hold"
+        if (current_tgid != null)
+           _tgid = current_tgid;
+        _tgid = parseInt(prompt("Enter tgid to hold", _tgid));
+        if (isNaN(_tgid) || (_tgid < 0) || (_tgid > 65535))
+            _tgid = 0;
+    }
+    else if ((command == "lockout") && (current_tgid == null)) {
+        _tgid = parseInt(prompt("Enter tgid to blacklist", _tgid));
+        if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
+            return;
+    }
+    else if (command == "whitelist") {
+        _tgid = parseInt(prompt("Enter tgid to whitelist", _tgid));
+        if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
+            return;
+    }
+
+    send_command(command, _tgid);
 }
 
 function f_debug() {

@@ -297,7 +297,11 @@ pngen23(uint32_t& Pr)
  */
 
 static inline size_t
+<<<<<<< HEAD
 imbe_header_decode(const voice_codeword& cw, uint32_t& u0, uint32_t& u1, uint32_t& u2, uint32_t& u3, uint32_t& u4, uint32_t& u5, uint32_t& u6, uint32_t& u7, uint32_t& E0, uint32_t& ET, bool bot_shift = true)
+=======
+imbe_header_decode(const voice_codeword& cw, uint32_t& u0, uint32_t& u1, uint32_t& u2, uint32_t& u3, uint32_t& u4, uint32_t& u5, uint32_t& u6, uint32_t& u7, uint32_t& E0, uint32_t& ET)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 {
    ET = 0;
 
@@ -339,9 +343,13 @@ imbe_header_decode(const voice_codeword& cw, uint32_t& u0, uint32_t& u1, uint32_
    u6 = v6;
 
    u7 = extract(cw, 137, 144);
+<<<<<<< HEAD
    if (bot_shift)
      u7 <<= 1; /* so that bit0 is free (see note about BOT bit */
 
+=======
+   u7 <<= 1; /* so that bit0 is free (see note about BOT bit */
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
    return errs;
 }
 

@@ -27,7 +27,12 @@ class log_ts
 {
 private:
 	struct timeval curr_time;
+<<<<<<< HEAD
 	char log_ts[20];
+=======
+	double tstamp;
+	char log_ts[30];
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 public:
 	inline const char* get()
@@ -39,6 +44,29 @@ public:
 
 		return log_ts;
 	}	
+<<<<<<< HEAD
+=======
+
+	inline const char* get(const int id)
+	{
+		if (gettimeofday(&curr_time, 0) == 0)
+		    sprintf(log_ts, "%010lu.%06lu [%d]", curr_time.tv_sec, curr_time.tv_usec, id);
+		else
+		    sprintf(log_ts, "[%d]", id);
+
+		return log_ts;
+	}
+
+	inline double get_ts()
+	{
+		if (gettimeofday(&curr_time, 0) == 0)
+			tstamp = curr_time.tv_sec + (curr_time.tv_usec / 1e6);
+		else
+			tstamp = 0;
+
+		return tstamp;
+	}
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 };
 
 #endif // INCLUDED_LOG_TS_H

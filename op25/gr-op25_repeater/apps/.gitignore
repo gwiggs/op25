@@ -1,0 +1,15 @@
+# Untracked files
+stderr.2
+*.blist
+*.wlist
+*.json
+*.tsv
+*.sh
+*.txt
+*.liq
+
+# Tracked files that would otherwise be excluded
+!op25.sh
+!trunk.tsv
+!cfg.json
+!meta.json

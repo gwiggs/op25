@@ -68,7 +68,11 @@ namespace gr {
   //! Sets value of omega and its min and max values 
   void set_omega (float omega);
   float get_freq_error(void);
+<<<<<<< HEAD
   int get_error_band(void);
+=======
+  void reset();
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 protected:
   bool input_sample0(gr_complex, gr_complex& outp);

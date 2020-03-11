@@ -16,6 +16,7 @@
 <!-- nav bar -->
 
 <div class="nav-bar">
+<<<<<<< HEAD
 	<ul class="nav-ul">
 	<li id="li1" class="nav-li"><input id="b1" class="nav-button" type="button" name="B1" value="Home" onclick="javascript:f_select(&quot;status&quot;);"></li>
 	<li id="li2" class="nav-li"><input id="b2" class="nav-button" type="button" name="B2" value="Configuration"  onclick="javascript:f_select(&quot;settings&quot;);"></li>
@@ -25,6 +26,105 @@
 	</ul> 
 </div>
 <br>
+=======
+<ul class="nav-ul">
+<li id="li1" class="nav-li"><input id="b1" class="nav-button" type="button" name="B1" value="Home" method="post" action="" onclick="javascript:f_select(&quot;status&quot;);"></li>
+<li id="li2" class="nav-li"><input id="b2" class="nav-button" type="button" name="B2" value="Plot" method="post" action="" onclick="javascript:f_select(&quot;plot&quot;);"></li>
+<li id="li3" class="nav-li"><input id="b3" class="nav-button" type="button" name="B3" value="About" method="post" action="" onclick="javascript:f_select(&quot;about&quot;);"></li>
+<li id="li4"><span class="copyr"> &copy; 2017-2019 Max H. Parke & Graham J. Norbury [boatbod version]</span></li>
+</ul> 
+</div>
+<div id="div_debug" style="display: none;">
+<br>
+</div>
+<!-- control buttons -->
+
+<div id="controls1" class="flex-container">
+
+	<div>
+	<input type="button" class="scan-button" name="skip" value="SKIP" title="Skip current tgid" onclick="javascript:f_scan_button(&quot;skip&quot;);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="hold" value="HOLD" title="Hold current tgid" onclick="javascript:f_scan_button(&quot;hold&quot;);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="goto" value="GOTO" title="Go to tgid" onclick="javascript:f_scan_button(&quot;goto&quot;);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="lockout" value="BkLIST" title="Blacklist tgid" onclick="javascript:f_scan_button(&quot;lockout&quot;);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="whitelist" value="WhLIST" title="Whitelist tgid" onclick="javascript:f_scan_button(&quot;whitelist&quot;);">
+	</div>
+
+	<div>
+		<!-- spacer -->
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="<<" value="<<" title="Adjust tune -1200" onclick="javascript:f_tune_button(-1200);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="<" value="<" title="Adjust tune -100" onclick="javascript:f_tune_button(-100);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name=">" value=">" title="Adjust tune +100" onclick="javascript:f_tune_button(100);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name=">>" value=">>" title="Adjust tune +1200" onclick="javascript:f_tune_button(1200);">
+	</div>
+
+</div>
+
+<div id="controls2" class="flex-container" style="display: none;">
+
+	<div>
+	<input type="button" class="scan-button" name="pl1" value="FFT" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="pl2" value="Con" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="pl3" value="Sym" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="pl4" value="Dat" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="pl5" value="Mix" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
+	</div>
+
+	<div>
+		<!-- spacer -->
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="<<" value="<<" title="Adjust tune -1200" onclick="javascript:f_tune_button(-1200);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="<" value="<" title="Adjust tune -100" onclick="javascript:f_tune_button(-100);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name=">" value=">" title="Adjust tune +100" onclick="javascript:f_tune_button(100);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name=">>" value=">>" title="Adjust tune +1200" onclick="javascript:f_tune_button(1200);">
+	</div>
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 <div id="div_debug" style="display: none;">
 </div>
@@ -40,7 +140,8 @@
 	<table border=0>
 	<tr><td>License:</td><td><a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">https://www.gnu.org/licenses/gpl-3.0.en.html</a></td></tr>
 	<tr><td>Mailing list:</td><td><a href="https://groups.yahoo.com/neo/groups/op25-dev" target="_blank2">https://groups.yahoo.com/neo/groups/op25-dev</a></td></tr>
-	<tr><td>Download:</td><td><tt>git clone https://git.osmocom.org/op25</tt></td></tr>
+	<tr><td>Download:</td><td><tt>git clone https://git.osmocom.org/op25 &nbsp&nbsp&nbsp[original]
+                                  <br>git clone https://github.com/boatbod/op25 [boatbod fork]</tt></td></tr>
 	<tr><td>Web site:</td><td><a href="http://op25.osmocom.org" target="_blank3">http://op25.osmocom.org</a></td></tr>
 	</table>
 	</div>
@@ -56,6 +157,7 @@
 
 		<div id="controls" class="controls">
 
+<<<<<<< HEAD
 			<div>
 			<input type="button" class="control-button" name="skip" value="SKIP" onclick="javascript:this.blur(); f_scan_button(&quot;skip&quot;);">
 			</div>
@@ -63,6 +165,26 @@
 			<div>
 			<input type="button" class="control-button" name="hold" value="HOLD" onclick="javascript:this.blur(); f_scan_button(&quot;hold&quot;);">
 			</div>
+=======
+	<div id="div_s2" class="s2"> <!-- table -->
+            <div class="s2_row">
+	        <div class="s2_cell_a"><span class="label">Frequency:</span></div>
+	        <div class="s2_cell_b" id="s2_freq">&nbsp</div>
+            </div>
+            <div class="s2_row">
+	        <div class="s2_cell_a"><span class="label">Talkgroup:</span></div>
+	        <div class="s2_cell_b" id="s2_tg">&nbsp</div>
+            </div>
+            <div class="s2_row">
+	        <div class="s2_cell_a"><span class="label">Group Addr:</span></div>
+	        <div class="s2_cell_b" id="s2_grp">&nbsp</div>
+            </div>
+            <div class="s2_row">
+	        <div class="s2_cell_a"><span class="label">Source Addr:</span></div>
+	        <div class="s2_cell_b" id="s2_src">&nbsp</div>
+            </div>
+	</div> <!-- end table -->
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 			<div>
 			<input type="button" class="control-button" name="lockout" value="LOCKOUT" onclick="javascript:this.blur(); f_scan_button(&quot;lockout&quot;);">
@@ -75,6 +197,7 @@
 				<!-- frequency, system, tg display -->
 			</div>
 
+<<<<<<< HEAD
 		</div>
 
 		<div class="sysMsg"> <!-- hold / last command box w/ logo-->
@@ -87,11 +210,23 @@
 	
 	<br>
 
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	<div id="div_s1" class="s1">
-	<!-- system freq and adjacent sites -->
+	<!-- system freq -->
 
 		Waiting for data...
 	</div>
+<<<<<<< HEAD
+=======
+	<br>
+
+	<!-- div_s3 -->
+
+	<div id="div_s3" class="s3">
+
+	<!-- adjacent sites -->
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 	<div id="div_images" class="s1">
         <p>

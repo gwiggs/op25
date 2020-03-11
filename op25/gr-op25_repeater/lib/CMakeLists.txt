@@ -20,6 +20,15 @@
 ########################################################################
 # Setup library
 ########################################################################
+option(AMBE_TONES "Enable AMBE tone synthesis" ON)
+if (AMBE_TONES)
+  message(STATUS "AMBE Tone Synthesis Enabled")
+else()
+  message(STATUS "AMBE Tone Synthesis Disabled")
+  add_definitions(-DDISABLE_AMBE_TONES)
+endif()
+unset(AMBE_TONES CACHE)
+
 include(GrPlatform) #define LIB_SUFFIX
 
 include_directories(${Boost_INCLUDE_DIR})
@@ -54,7 +63,14 @@ list(APPEND op25_repeater_sources
     mbelib.c
     ambe_encoder.cc
     rx_sync.cc
+    hamming.cc
+    golay2087.cc
+    bptc19696.cc
+    trellis.cc
+    dmr_cai.cc
+    dmr_slot.cc
     op25_audio.cc
+    op25_timer
     CCITTChecksumReverse.cpp
     value_string.cc
     nxdn.cc
@@ -69,15 +85,6 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 set(GR_FILTER_LIBRARIES ${GR_FILTER_LIBRARY})
 target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES} ${GR_FILTER_LIBRARIES} imbe_vocoder)
 set_target_properties(gnuradio-op25_repeater PROPERTIES DEFINE_SYMBOL "gnuradio_op25_repeater_EXPORTS")
-
-########################################################################
-# Install built library files
-########################################################################
-install(TARGETS gnuradio-op25_repeater
-    LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
-    ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
-    RUNTIME DESTINATION bin              # .dll file
-)
 
 ########################################################################
 # Build and register unit test
@@ -121,3 +128,29 @@ add_executable(op25-d2460 ${d2460_sources})
 target_link_libraries(op25-d2460 imbe_vocoder)
 
 add_subdirectory(imbe_vocoder)
+
+########################################################################
+# Utilities
+########################################################################
+list(APPEND scan4sync_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/scan4sync.cc
+)
+
+list(APPEND BER_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/BER.cc
+)
+
+add_executable(scan4sync ${scan4sync_sources})
+add_executable(BER ${BER_sources})
+target_link_libraries(scan4sync)
+target_link_libraries(BER)
+
+########################################################################
+# Install built library files
+########################################################################
+install(TARGETS gnuradio-op25_repeater scan4sync BER
+    LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
+    ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
+    RUNTIME DESTINATION bin              # .dll file
+)
+

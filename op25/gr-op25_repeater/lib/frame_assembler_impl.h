@@ -41,6 +41,7 @@ namespace gr {
     {
      private:
         int d_debug;
+	int d_msgq_id;
 	gr::msg_queue::sptr d_msg_queue;
         rx_sync d_sync;
 
@@ -50,11 +51,12 @@ namespace gr {
     void set_xormask(const char*p) ;
     void set_nac(int nac) ;
     void set_slotid(int slotid) ;
+    void set_slotkey(int key) ;
 
  public:
 
      public:
-      frame_assembler_impl(const char* options, int debug, gr::msg_queue::sptr queue);
+      frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
       ~frame_assembler_impl();
 
       // Where all the action really happens

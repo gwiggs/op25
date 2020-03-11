@@ -51,7 +51,7 @@ TODO: make less fake
 """
 
 def static_file(environ, start_response):
-    content_types = { 'png': 'image/png', 'jpeg': 'image/jpeg', 'jpg': 'image/jpeg', 'gif': 'image/gif', 'css': 'text/css', 'js': 'application/javascript', 'html': 'text/html'}
+    content_types = { 'png': 'image/png', 'jpeg': 'image/jpeg', 'jpg': 'image/jpeg', 'gif': 'image/gif', 'css': 'text/css', 'js': 'application/javascript', 'html': 'text/html', 'ico' : 'image/x-icon'}
     img_types = 'png jpg jpeg gif'.split()
     if environ['PATH_INFO'] == '/':
         filename = 'index.html'
@@ -148,6 +148,7 @@ def do_request(d):
 
 def post_req(environ, start_response, postdata):
     global my_input_q, my_output_q, my_recv_q, my_port
+<<<<<<< HEAD
     resp_msg = []
     try:
         data = json.loads(postdata)
@@ -170,11 +171,25 @@ def post_req(environ, start_response, postdata):
         if not my_output_q.full_p():
             my_output_q.insert_tail(msg)
     time.sleep(0.2)
+=======
+    valid_req = False
+    try:
+        data = json.loads(postdata)
+        for d in data:
+            msg = gr.message().make_from_string(str(d['command']), -2, d['data'], 0)
+            my_output_q.insert_tail(msg)
+        valid_req = True
+        time.sleep(0.2)
+    except:
+        sys.stderr.write('post_req: error processing input: %s:\n' % (postdata))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
     while not my_recv_q.empty_p():
         msg = my_recv_q.delete_head()
         if msg.type() == -4:
             resp_msg.append(json.loads(msg.to_string()))
+    if not valid_req:
+        resp_msg = []
     status = '200 OK'
     content_type = 'application/json'
     output = json.dumps(resp_msg)
@@ -228,7 +243,11 @@ class http_server(object):
         my_recv_q = gr.msg_queue(10)
         self.q_watcher = queue_watcher(my_input_q, process_qmsg)
 
-        self.server = create_server(application, host=host, port=my_port)
+        try:
+            self.server = create_server(application, host=host, port=my_port)
+        except:
+            sys.stderr.write('Failed to create http terminal server\n%s\n' % traceback.format_exc())
+            sys.exit(1)
 
     def run(self):
         self.server.run()

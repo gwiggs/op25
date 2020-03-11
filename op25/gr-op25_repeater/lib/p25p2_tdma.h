@@ -40,7 +40,11 @@
 class p25p2_tdma
 {
 public:
+<<<<<<< HEAD
 	p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output) ;	// constructor
+=======
+	p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) ;	// constructor
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	int handle_packet(const uint8_t dibits[]) ;
 	void set_slotid(int slotid);
 	uint8_t* tdma_xormask;
@@ -62,11 +66,18 @@ private:
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
+	mbe_tone tone_mp;
+	int mbe_err_cnt;
+	bool tone_frame;
 	software_imbe_decoder software_decoder;
 	gr::msg_queue::sptr d_msg_queue;
 	std::deque<int16_t> &output_queue_decode;
 	bool d_do_msgq;
 	bool d_do_audio_output;
+<<<<<<< HEAD
+=======
+        bool d_do_nocrypt;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         const op25_audio& op25audio;
 	log_ts logts;
 
@@ -80,20 +91,34 @@ private:
         std::vector<uint8_t> ESS_A; // ESS_A and ESS_B are hexbits vectors
         std::vector<uint8_t> ESS_B;
 
+<<<<<<< HEAD
         uint8_t ess_keyid;
         uint16_t ess_algid;
+=======
+        uint16_t ess_keyid;
+        uint8_t ess_algid;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	uint8_t ess_mi[9] = {0};
 
 	p25p2_framer p2framer;
 
 	int handle_acch_frame(const uint8_t dibits[], bool fast) ;
 	void handle_voice_frame(const uint8_t dibits[]) ;
+<<<<<<< HEAD
 	int process_mac_pdu(const uint8_t byte_buf[], const unsigned int len) ;
         void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len) ;
         void handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len) ;
         void handle_mac_idle(const uint8_t byte_buf[], const unsigned int len) ;
         void handle_mac_active(const uint8_t byte_buf[], const unsigned int len) ;
         void handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len) ;
+=======
+	int process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_active(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         void decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) ;
         void handle_4V2V_ess(const uint8_t dibits[]);
         inline bool encrypted() { return (ess_algid != 0x80); }

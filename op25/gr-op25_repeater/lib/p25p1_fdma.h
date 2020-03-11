@@ -22,12 +22,19 @@
 #define INCLUDED_OP25_REPEATER_P25P1_FDMA_H
 
 #include <gnuradio/msg_queue.h>
+<<<<<<< HEAD
 #include <sys/time.h>
+=======
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 #include <deque>
 
 #include "ezpwd/rs"
 
 #include "log_ts.h"
+<<<<<<< HEAD
+=======
+#include "op25_timer.h"
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 #include "op25_audio.h"
 #include "p25_framer.h"
 #include "p25p1_voice_encode.h"
@@ -47,7 +54,11 @@ namespace gr {
 	void process_duid(uint32_t const duid, uint32_t const nac, const uint8_t* buf, const int len);
         void process_HDU(const bit_vector& A);
         void process_LCW(std::vector<uint8_t>& HB);
+<<<<<<< HEAD
         int process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB);
+=======
+        void process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB);
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         void process_LDU1(const bit_vector& A);
         void process_LDU2(const bit_vector& A);
         void process_TTDU();
@@ -68,10 +79,18 @@ namespace gr {
 	bool d_do_output;
 	bool d_do_msgq;
 	bool d_do_audio_output;
+<<<<<<< HEAD
 	gr::msg_queue::sptr d_msg_queue;
 	std::deque<int16_t> &output_queue;
 	p25_framer* framer;
 	struct timeval last_qtime;
+=======
+        bool d_do_nocrypt;
+	gr::msg_queue::sptr d_msg_queue;
+	std::deque<int16_t> &output_queue;
+	p25_framer* framer;
+        op25_timer qtimer;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
         p25p1_voice_decode p1voice_decode;
         const op25_audio& op25audio;
 	log_ts logts;
@@ -80,15 +99,24 @@ namespace gr {
         ezpwd::RS<63,51> rs12;
         ezpwd::RS<63,47> rs16;
 
+<<<<<<< HEAD
         uint8_t  ess_keyid;
         uint16_t ess_algid;
+=======
+        uint16_t  ess_keyid;
+        uint8_t ess_algid;
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 	uint8_t  ess_mi[9] = {0};
 	uint16_t vf_tgid;
 
      public:
 	void reset_timer();
 	void rx_sym (const uint8_t *syms, int nsyms);
+<<<<<<< HEAD
         p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output);
+=======
+        p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt);
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
        ~p25p1_fdma();
 
       // Where all the action really happens

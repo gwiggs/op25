@@ -85,8 +85,14 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 	acc |= acc_parity;
 
 	// check if bch decode unsuccessful
+<<<<<<< HEAD
 	if (ec < 0)
 		return false;
+=======
+	if ((ec < 0) || (ec > 4)) { // hamming distance = 10, so max 4 correctable errors
+		return false;
+	}
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 	bch_errors = ec;
 
@@ -96,6 +102,21 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 	duid = (acc >> 48) & 0x00f;
 	parity = acc_parity;
 
+#if 1
+	// Drop empty NIDs
+	if ((nid_word >> 1) == 0)
+		return false;
+
+	// Validate duid and parity bit (TIA-102-BAAC)
+	if (((duid == 0) || (duid == 3) || (duid == 7) || (duid == 12) || (duid == 15)) && !parity)
+		return true;
+	else if (((duid == 5) || (duid == 10)) & parity)
+		return true;
+	else
+		if (d_debug >= 10)
+			fprintf(stderr, "p25_framer::nid_codeword: duid/parity check fail: nid=%016lx, ec=%d\n", nid_word, ec);
+		return false;
+#endif
 	return true;
 }
 
@@ -140,16 +161,16 @@ bool p25_framer::rx_sym(uint8_t dibit) {
 	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
 		nid_syms = 1;
 		reverse_p ^= 0x02;   // auto flip polarity reversal
-		fprintf(stderr, "Reversed FS polarity detected - autocorrecting\n");
+		fprintf(stderr, "p25_framer::rx_sym() Reversed FS polarity detected - autocorrecting\n");
 	}
 	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0x001050551155LL, 0, 48)) {
-		fprintf(stderr, "tuning error -1200\n");
+		fprintf(stderr, "p25_framer::rx_sym() tuning error -1200\n");
 	}
 	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xFFEFAFAAEEAALL, 0, 48)) {
-		fprintf(stderr, "tuning error +1200\n");
+		fprintf(stderr, "p25_framer::rx_sym() tuning error +1200\n");
 	}
 	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xAA8A0A008800LL, 0, 48)) {
-		fprintf(stderr, "tuning error +/- 2400\n");
+		fprintf(stderr, "p25_framer::rx_sym() tuning error +/- 2400\n");
 	}
 	if (next_bit > 0) {
 		frame_body[next_bit++] = (dibit >> 1) & 1;

@@ -22,6 +22,7 @@
 # 02110-1301, USA.
 
 from ctypes import *
+import os
 import sys
 import time
 import threading
@@ -233,6 +234,7 @@ class alsasound(object):
 					break
 				time.sleep(1)
 		ret = self.libasound.snd_pcm_prepare(self.c_pcm)
+		return ret
 
 	def drop(self):
 		ret = self.libasound.snd_pcm_drop(self.c_pcm)
@@ -243,6 +245,7 @@ class alsasound(object):
 					break
 				time.sleep(1)
 		ret = self.libasound.snd_pcm_prepare(self.c_pcm)
+		return ret
 
 	def dump(self):
 		if (self.c_pcm.value == None):
@@ -257,6 +260,7 @@ class alsasound(object):
 		sys.stderr.write("%s\n" % c_str_p.value[0:c_strlen-1])
 		self.libasound.snd_output_close(c_buf_p)
 
+<<<<<<< HEAD
 # OP25 thread to receive UDP audio samples and send to Alsa driver
 class socket_audio(threading.Thread):
 	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, **kwds):
@@ -268,14 +272,79 @@ class socket_audio(threading.Thread):
 		self.sock_a = None
 		self.sock_b = None
 		self.pcm = alsasound()
+=======
+	def check(self):
+		return 0
+
+# Wrapper to emulate pcm writes of sound samples to stdout (for liquidsoap)
+class stdout_wrapper(object): 
+	def __init__(self):
+		self.silence = chr(0) * 640
+		pass
+
+	def open(self, hwdev):
+		return 0
+
+	def close(self):
+		return 0
+
+	def setup(self, pcm_format, pcm_channels, pcm_rate, pcm_buffer_size):
+		return 0
+
+	def drain(self):
+		try:
+			sys.stdout.flush()
+		except IOError:	# IOError means listener has terminated
+			return -1
+		return 0
+
+	def drop(self):
+		return 0
+
+	def write(self, pcm_data):
+		try:
+			sys.stdout.write(pcm_data)
+		except IOError:	# IOError means listener has terminated
+			return -1
+		return 0
+
+	def check(self):
+		rc = 0
+		if (self.write(self.silence) < 0) or (self.drain() < 0): # write silence to check pipe connectivity 
+			rc = -1
+		return rc
+
+	def dump(self):
+		pass
+
+# Main class that receives UDP audio samples and sends them to a PCM subsystem (currently ALSA or STDOUT)
+class socket_audio(object):
+	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
+		self.keep_running = True
+		self.two_channels = two_channels
+		self.audio_gain = audio_gain
+		self.dest_stdout = dest_stdout
+		self.sock_a = None
+		self.sock_b = None
+                if dest_stdout:
+			pcm_device = "stdout"
+                        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # reopen stdout with buffering disabled
+			self.pcm = stdout_wrapper()
+		else:
+			self.pcm = alsasound()
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 		self.setup_sockets(udp_host, udp_port)
 		self.setup_pcm(pcm_device)
-		self.start()
-		return
 
 	def run(self):
+<<<<<<< HEAD
 		while self.keep_running:
 			readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b] )
+=======
+		rc = 0
+		while self.keep_running and (rc >= 0):
+			readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b], 5.0)
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 			in_a = None
 			in_b = None
 			data_a = ""
@@ -283,6 +352,14 @@ class socket_audio(threading.Thread):
 			flag_a = -1
 			flag_b = -1
 
+<<<<<<< HEAD
+=======
+			# Check for select() polling timeout and pcm self-check
+			if (not readable) and (not writable) and (not exceptional):
+ 				rc = self.pcm.check()
+				continue
+
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 			# Data received on the udp port is 320 bytes for an audio frame or 2 bytes for a flag
 			if self.sock_a in readable:
 				in_a = self.sock_a.recvfrom(MAX_SUPERFRAME_SIZE)
@@ -304,25 +381,42 @@ class socket_audio(threading.Thread):
 				elif len_b > 0:
 					data_b = in_b[0]
 
+<<<<<<< HEAD
 			if (((flag_a == 0) and (flag_b == 0)) or
 			    ((flag_a == 0) and ((in_b is None) or (flag_b == 1))) or 
 			    ((flag_b == 0) and ((in_a is None) or (flag_a == 1)))):
 				self.pcm.drain()
+=======
+			if (flag_a == 0) or (flag_b == 0):
+				rc = self.pcm.drain()
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 				continue
 
 			if (((flag_a == 1) and (flag_b == 1)) or
 			    ((flag_a == 1) and (in_b is None)) or 
 			    ((flag_b == 1) and (in_a is None))):
+<<<<<<< HEAD
 				self.pcm.drop()
+=======
+				rc = self.pcm.drop()
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 				continue
 
 			if not self.two_channels:
 				data_a = self.scale(data_a)
+<<<<<<< HEAD
 				self.pcm.write(self.interleave(data_a, data_a))
 			else:
 				data_a = self.scale(data_a)
 				data_b = self.scale(data_b)
 				self.pcm.write(self.interleave(data_a, data_b))
+=======
+				rc = self.pcm.write(self.interleave(data_a, data_a))
+			else:
+				data_a = self.scale(data_a)
+				data_b = self.scale(data_b)
+				rc = self.pcm.write(self.interleave(data_a, data_b))
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 
 		self.close_sockets()
 		self.close_pcm()
@@ -389,6 +483,22 @@ class socket_audio(threading.Thread):
 		return
 
 	def close_pcm(self):
+		sys.stderr.write('audio closing\n')
 		self.pcm.close()
 		return
+
+class audio_thread(threading.Thread):
+	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
+		threading.Thread.__init__(self, **kwds)
+		self.setDaemon(True)
+		self.keep_running = True
+                self.sock_audio = socket_audio(udp_host, udp_port, pcm_device, two_channels, audio_gain, dest_stdout, **kwds)
+		self.start()
+		return
+
+	def run(self):
+		self.sock_audio.run()
+
+	def stop(self):
+		self.sock_audio.stop()
 

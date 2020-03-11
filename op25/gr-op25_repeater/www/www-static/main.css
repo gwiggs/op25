@@ -76,7 +76,24 @@ hr {
 	text-decoration: none;
 	margin: 1px 1px;
 	cursor: pointer;
-	width: 100px;
+	/*width: 100px;*/
+	width: 77px;
+	font-size: 14px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
+.plot-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 10px 10px;
+	text-decoration: none;
+	margin: 4px 2px;
+	cursor: pointer;
+	width: 57px;
 	font-size: 14px;
 	font-weight: bold;
 	box-shadow: 0 1px 1px 0 rgba(0,0,0,0.2), 0 2px 5px 0 rgba(0,0,0,0.19);
@@ -276,6 +293,7 @@ div.adjacent {  /* adjacent sites container that holds the table */
 }
 
 .s2 {
+<<<<<<< HEAD
 	border: 0px solid #999;
 	position: relative; 
 	display: inline-block; 
@@ -283,6 +301,38 @@ div.adjacent {  /* adjacent sites container that holds the table */
 	width: 512px;
 	padding: 5px;
 	margin: 0 0 0 2px;
+=======
+	display: table;
+	border: 1px solid #999;
+	height: auto;
+	overflow: auto;
+	width: 720px;
+	padding: 5px;
+	background: LightGray; /* For browsers that do not support gradients */
+	background: linear-gradient(White, Silver);
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+}
+
+.s2_row {
+	display: table-row;
+	width:auto;
+}
+
+.s2_cell_a {
+	display: table-column;
+	float: left;
+	width: 15%
+}
+
+.s2_cell_b {
+	display: table-column;
+	float: left;
+	width: 85%
+}
+
+.s3 {
+	/* empty */
+>>>>>>> 1be5c53665b61077eeea558c0c35dfd45e773782
 }
 
 .copyright-text {
